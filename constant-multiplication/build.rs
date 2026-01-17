@@ -63,7 +63,7 @@ fn pack_graph_types(input_path: &str, output_path: &str) {
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
-    let dest_path = Path::new(&out_dir).join("embedded_data.rs");
+    let dest_path = Path::new(&out_dir).join("embedded_adder_cost.rs");
 
     // Pack the data file into Rust code
     pack_data("adder_cost.bin", dest_path.to_str().unwrap());

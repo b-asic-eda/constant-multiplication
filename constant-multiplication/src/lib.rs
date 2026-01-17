@@ -3,21 +3,22 @@ use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 use serde::{Deserialize, Serialize};
+use unsigned_varint::decode as varint_decode;
 
 // Include the compile-time generated data
-include!(concat!(env!("OUT_DIR"), "/embedded_data.rs"));
+include!(concat!(env!("OUT_DIR"), "/embedded_adder_cost.rs"));
 include!(concat!(env!("OUT_DIR"), "/embedded_graph_types.rs"));
 
 // GraphType enum definition (must match prepare_data.rs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum GraphTypeInternal {
-    A(usize, usize),
-    S(usize, usize),
-    C(usize, usize),
-    L1(usize, usize, usize, usize, usize),
-    L2(usize, usize, usize, usize, usize),
-    L3(usize, usize, usize, usize, usize),
-    L4(usize, usize, usize, usize, usize),
+    Adder(usize, usize),
+    Subtractor(usize, usize),
+    Cascade(usize, usize),
+    Leapfrog1(usize, usize, usize, usize, usize),
+    Leapfrog2(usize, usize, usize, usize, usize),
+    Leapfrog3(usize, usize, usize, usize, usize),
+    Leapfrog4(usize, usize, usize, usize, usize),
 }
 
 // GraphType as a Python class
@@ -52,31 +53,31 @@ impl GraphType {
 impl From<GraphTypeInternal> for GraphType {
     fn from(gt: GraphTypeInternal) -> Self {
         match gt {
-            GraphTypeInternal::A(a, b) => GraphType {
+            GraphTypeInternal::Adder(a, b) => GraphType {
                 variant: "Adder".to_string(),
                 params: vec![a, b],
             },
-            GraphTypeInternal::S(a, b) => GraphType {
+            GraphTypeInternal::Subtractor(a, b) => GraphType {
                 variant: "Subtractor".to_string(),
                 params: vec![a, b],
             },
-            GraphTypeInternal::C(a, b) => GraphType {
+            GraphTypeInternal::Cascade(a, b) => GraphType {
                 variant: "Cascade".to_string(),
                 params: vec![a, b],
             },
-            GraphTypeInternal::L1(a, b, c, d, e) => GraphType {
+            GraphTypeInternal::Leapfrog1(a, b, c, d, e) => GraphType {
                 variant: "Leapfrog1".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::L2(a, b, c, d, e) => GraphType {
+            GraphTypeInternal::Leapfrog2(a, b, c, d, e) => GraphType {
                 variant: "Leapfrog2".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::L3(a, b, c, d, e) => GraphType {
+            GraphTypeInternal::Leapfrog3(a, b, c, d, e) => GraphType {
                 variant: "Leapfrog3".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::L4(a, b, c, d, e) => GraphType {
+            GraphTypeInternal::Leapfrog4(a, b, c, d, e) => GraphType {
                 variant: "Leapfrog4".to_string(),
                 params: vec![a, b, c, d, e],
             },
@@ -84,20 +85,164 @@ impl From<GraphTypeInternal> for GraphType {
     }
 }
 
-// Deserialize graph types once and cache
-fn get_graph_types_data() -> PyResult<Vec<Vec<GraphType>>> {
-    // Decompress the LZ4 data
-    let decompressed = lz4_flex::decompress_size_prepended(GRAPH_TYPES_BYTES)
-        .map_err(|e| PyValueError::new_err(format!("Failed to decompress: {}", e)))?;
+/// Deserialization with varint decoding
+fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
+    let mut remaining = data;
 
-    // Deserialize with bincode
-    let internal: Vec<Vec<GraphTypeInternal>> = bincode::deserialize(&decompressed)
-        .map_err(|e| PyValueError::new_err(format!("Failed to deserialize: {}", e)))?;
+    // Read number of entries
+    let (count, rest) =
+        varint_decode::usize(remaining).map_err(|e| format!("Failed to decode count: {}", e))?;
+    remaining = rest;
 
-    Ok(internal
-        .into_iter()
-        .map(|vec| vec.into_iter().map(GraphType::from).collect())
-        .collect())
+    let mut result = Vec::with_capacity(count);
+
+    for _ in 0..count {
+        // Read length of this Vec
+        let (vec_len, rest) = varint_decode::usize(remaining)
+            .map_err(|e| format!("Failed to decode vec length: {}", e))?;
+        remaining = rest;
+
+        let mut type_vec = Vec::with_capacity(vec_len);
+
+        for _ in 0..vec_len {
+            if remaining.is_empty() {
+                return Err("Unexpected end of data".to_string());
+            }
+
+            let variant_tag = remaining[0];
+            remaining = &remaining[1..];
+
+            let graph_type = match variant_tag {
+                0 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Adder".to_string(),
+                        params: vec![a, b],
+                    }
+                }
+                1 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Subtractor".to_string(),
+                        params: vec![a, b],
+                    }
+                }
+                2 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Cascade".to_string(),
+                        params: vec![a, b],
+                    }
+                }
+                3 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog1".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                4 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog2".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                5 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog3".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                6 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog4".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                _ => return Err(format!("Unknown variant tag: {}", variant_tag)),
+            };
+
+            type_vec.push(graph_type);
+        }
+
+        result.push(type_vec);
+    }
+
+    Ok(result)
 }
 
 /// Get adder cost at index (right-shifts even indices until odd)
@@ -130,12 +275,6 @@ fn adder_cost(mut idx: usize) -> PyResult<u8> {
     }
 
     Ok(val & 0b111)
-}
-
-/// Get the total length of the original vector
-#[pyfunction]
-fn len() -> usize {
-    DATA_COUNT * 2
 }
 
 /// Get info about the embedded data
@@ -175,13 +314,6 @@ fn get_graph_types(py: Python, mut idx: usize) -> PyResult<Py<PyAny>> {
     Ok(list.into())
 }
 
-/// Get total number of graph type entries
-#[pyfunction]
-fn graph_types_len() -> PyResult<usize> {
-    let all_types = get_graph_types_data()?;
-    Ok(all_types.len())
-}
-
 /// Get all graph types as a list
 #[pyfunction]
 fn get_all_graph_types(py: Python) -> PyResult<Py<PyAny>> {
@@ -199,14 +331,22 @@ fn get_all_graph_types(py: Python) -> PyResult<Py<PyAny>> {
     Ok(result.into())
 }
 
+fn get_graph_types_data() -> PyResult<Vec<Vec<GraphType>>> {
+    // Decompress the LZ4 data
+    let decompressed = lz4_flex::decompress_size_prepended(GRAPH_TYPES_BYTES)
+        .map_err(|e| PyValueError::new_err(format!("Failed to decompress: {}", e)))?;
+
+    // Deserialize with varint decoding
+    deserialize_graph_types(&decompressed)
+        .map_err(|e| PyValueError::new_err(format!("Failed to deserialize: {}", e)))
+}
+
 #[pymodule]
 fn constant_multiplication(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<GraphType>()?;
     m.add_function(wrap_pyfunction!(adder_cost, m)?)?;
-    m.add_function(wrap_pyfunction!(len, m)?)?;
     m.add_function(wrap_pyfunction!(info, m)?)?;
     m.add_function(wrap_pyfunction!(get_graph_types, m)?)?;
-    m.add_function(wrap_pyfunction!(graph_types_len, m)?)?;
     m.add_function(wrap_pyfunction!(get_all_graph_types, m)?)?;
     Ok(())
 }

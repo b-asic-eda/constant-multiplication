@@ -2,6 +2,7 @@ use derive_more::Display;
 use serde::Serialize;
 use std::{iter::zip, ops::Shr};
 use tracing::{Level, debug, info, span, warn};
+use unsigned_varint::encode as varint_encode;
 
 fn main() -> Result<()> {
     // Initialize tracing subscriber
@@ -509,10 +510,11 @@ fn main() -> Result<()> {
         }
     }
 
-    let serialized = bincode::serialize(&graph_types).expect("Failed to serialize graph types");
+   // Serialize with varint encoding
+    let serialized = serialize_graph_types(&graph_types);
 
     info!("\nGraph types serialization:");
-    info!("  Uncompressed: {} bytes", serialized.len());
+    info!("  Varint-encoded: {} bytes", serialized.len());
 
     // Compress with lz4
     let compressed = lz4_flex::compress_prepend_size(&serialized);
@@ -557,19 +559,19 @@ fn main() -> Result<()> {
 #[derive(Debug, Display, Clone, Serialize)]
 enum GraphType {
     #[display("A({_0}, {_1})")]
-    A(usize, usize),
+    Adder(usize, usize),
     #[display("S({_0}, {_1})")]
-    S(usize, usize),
+    Subtractor(usize, usize),
     #[display("C({_0}, {_1})")]
-    C(usize, usize),
+    Cascade(usize, usize),
     #[display("L1({_0}, {_1}, {_2}, {_3}, {_4})")]
-    L1(usize, usize, usize, usize, usize),
+    Leapfrog1(usize, usize, usize, usize, usize),
     #[display("L2({_0}, {_1}, {_2}, {_3}, {_4})")]
-    L2(usize, usize, usize, usize, usize),
+    Leapfrog2(usize, usize, usize, usize, usize),
     #[display("L3({_0}, {_1}, {_2}, {_3}, {_4})")]
-    L3(usize, usize, usize, usize, usize),
+    Leapfrog3(usize, usize, usize, usize, usize),
     #[display("L4({_0}, {_1}, {_2}, {_3}, {_4})")]
-    L4(usize, usize, usize, usize, usize),
+    Leapfrog4(usize, usize, usize, usize, usize),
 }
 
 fn addsub_combinations(
@@ -591,16 +593,16 @@ fn addsub_combinations(
             let sum = findodd(term1 + term2);
             if sum <= max_value && adder_count[sum] >= adder_cost {
                 adder_count[sum] = adder_cost;
-                add_graph_type(adder_structures, sum, GraphType::A(term1, term2));
+                add_graph_type(adder_structures, sum, GraphType::Adder(term1, term2));
             }
             let diff = findodd(term1.abs_diff(term2));
 
             if diff <= max_value && diff != 0 && adder_count[diff] > adder_cost {
                 adder_count[diff] = adder_cost;
                 if term1 >= term2 {
-                    add_graph_type(adder_structures, diff, GraphType::S(term1, term2));
+                    add_graph_type(adder_structures, diff, GraphType::Subtractor(term1, term2));
                 } else {
-                    add_graph_type(adder_structures, diff, GraphType::S(term2, term1));
+                    add_graph_type(adder_structures, diff, GraphType::Subtractor(term2, term1));
                 }
             }
         }
@@ -627,9 +629,9 @@ fn cascade_combinations(
             if cascade <= max_value && adder_count[cascade] >= adder_cost {
                 adder_count[cascade] = adder_cost;
                 if term1 <= term2 {
-                    add_graph_type(adder_structures, cascade, GraphType::C(term1, term2));
+                    add_graph_type(adder_structures, cascade, GraphType::Cascade(term1, term2));
                 } else {
-                    add_graph_type(adder_structures, cascade, GraphType::C(term2, term1));
+                    add_graph_type(adder_structures, cascade, GraphType::Cascade(term2, term1));
                 }
             }
         }
@@ -691,7 +693,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::L1(term1, term2, term3, term4, term5),
+                                GraphType::Leapfrog1(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -704,7 +706,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::L2(term1, term2, term3, term4, term5),
+                                GraphType::Leapfrog2(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -717,7 +719,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::L3(term1, term2, term3, term4, term5),
+                                GraphType::Leapfrog3(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -731,7 +733,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::L4(term1, term2, term3, term4, term5),
+                                GraphType::Leapfrog4(term1, term2, term3, term4, term5),
                             );
                         }
                     }
@@ -810,4 +812,101 @@ fn save_packed_data(path: &str, packed: &[u8], count: usize) -> Result<()> {
     // Write packed data
     f.write_all(packed)?;
     Ok(())
+}
+
+// Custom serialization with varint encoding
+fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
+    let mut buf = Vec::new();
+
+    // Write number of entries (varint)
+    let mut count_buf = varint_encode::usize_buffer();
+    let count_bytes = varint_encode::usize(types.len(), &mut count_buf);
+    buf.extend_from_slice(count_bytes);
+
+    for type_vec in types {
+        // Write length of this Vec (varint)
+        let mut len_buf = varint_encode::usize_buffer();
+        let len_bytes = varint_encode::usize(type_vec.len(), &mut len_buf);
+        buf.extend_from_slice(len_bytes);
+
+        for gt in type_vec {
+            match gt {
+                GraphType::Adder(a, b) => {
+                    buf.push(0); // variant tag
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                }
+                GraphType::Subtractor(a, b) => {
+                    buf.push(1);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                }
+                GraphType::Cascade(a, b) => {
+                    buf.push(2);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                }
+                GraphType::Leapfrog1(a, b, c, d, e) => {
+                    buf.push(3);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                }
+                GraphType::Leapfrog2(a, b, c, d, e) => {
+                    buf.push(4);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                }
+                GraphType::Leapfrog3(a, b, c, d, e) => {
+                    buf.push(5);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                }
+                GraphType::Leapfrog4(a, b, c, d, e) => {
+                    buf.push(6);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                }
+            }
+        }
+    }
+
+    buf
 }

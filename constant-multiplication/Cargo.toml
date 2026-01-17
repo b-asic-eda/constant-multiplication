@@ -3,12 +3,13 @@ name = "constant_multiplication"
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-pyo3 = { version = "0.27", features = ["extension-module"] }
-bincode.workspace = true
-serde.workspace = true
-lz4_flex.workspace = true
-
 [lib]
 name = "constant_multiplication"
 crate-type = ["cdylib"]
+
+[dependencies]
+bincode.workspace = true
+lz4_flex.workspace = true
+pyo3 = { version = "0.27", features = ["extension-module"] }
+serde.workspace = true
+unsigned-varint.workspace = true
