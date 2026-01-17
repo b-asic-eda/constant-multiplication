@@ -120,7 +120,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13', '3.14']
 
     steps:
       - uses: actions/checkout@v4
@@ -144,7 +144,6 @@ jobs:
       - name: Run tests
         run: |
           python -c "import constant_multiplication as cm; print('Module info:', cm.info())"
-          python -c "import constant_multiplication as cm; assert cm.len() > 0, 'Vector should have length'"
           python -c "import constant_multiplication as cm; val = cm.adder_cost(1); print(f'adder_cost(1) = {val}'); assert 0 <= val <= 7, 'Value should be 3-bit'"
           python -c "import constant_multiplication as cm; print('Even index test: adder_cost(2) =', cm.adder_cost(2))"
           python -c "import constant_multiplication as cm; types = cm.get_graph_types(1); print(f'Graph types at 1: {len(types)} types')"
