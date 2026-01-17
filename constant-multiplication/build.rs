@@ -37,6 +37,30 @@ fn pack_data(input_path: &str, output_path: &str) {
     writeln!(out, "\n];").unwrap();
 }
 
+fn pack_graph_types(input_path: &str, output_path: &str) {
+    // Read the serialized graph types from file
+    let data = std::fs::read(input_path).expect("Failed to read graph types file");
+
+    let mut out = File::create(output_path).expect("Failed to create output file");
+
+    writeln!(out, "// Auto-generated - do not edit").unwrap();
+    writeln!(out, "pub const GRAPH_TYPES_BYTES: &[u8] = &[").unwrap();
+
+    for (i, byte) in data.iter().enumerate() {
+        if i % 16 == 0 {
+            write!(out, "    ").unwrap();
+        }
+        write!(out, "0x{:02x},", byte).unwrap();
+        if i % 16 == 15 {
+            writeln!(out).unwrap();
+        } else {
+            write!(out, " ").unwrap();
+        }
+    }
+
+    writeln!(out, "\n];").unwrap();
+}
+
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("embedded_data.rs");
@@ -45,6 +69,11 @@ fn main() {
     // Change "data.bin" to your actual input file path
     pack_data("../data.bin", dest_path.to_str().unwrap());
 
-    // Rebuild if the data file changes
-    println!("cargo:rerun-if-changed=data.bin");
+    // Pack the graph types data
+    let graph_dest_path = Path::new(&out_dir).join("embedded_graph_types.rs");
+    pack_graph_types("../graph_types.bin", graph_dest_path.to_str().unwrap());
+
+    // Rebuild if either data file changes
+    println!("cargo:rerun-if-changed=../data.bin");
+    println!("cargo:rerun-if-changed=../graph_types.bin");
 }

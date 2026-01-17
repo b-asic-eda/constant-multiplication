@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [x86_64, aarch64]
+        target: [x86_64] #, aarch64]
     steps:
       - uses: actions/checkout@v4
 
@@ -143,10 +143,11 @@ jobs:
 
       - name: Run tests
         run: |
-          python -c "import compact_vector; print('Module info:', compact_vector.info())"
-          python -c "import compact_vector; assert compact_vector.len() > 0, 'Vector should have length'"
-          python -c "import compact_vector; val = compact_vector.get(1); print(f'get(1) = {val}'); assert 0 <= val <= 7, 'Value should be 3-bit'"
-          python -c "import compact_vector; print('Even index test: get(2) =', compact_vector.get(2))"
+          python -c "import constant_multiplication as cm; print('Module info:', cm.info())"
+          python -c "import constant_multiplication as cm; assert cm.len() > 0, 'Vector should have length'"
+          python -c "import constant_multiplication as cm; val = cm.adder_cost(1); print(f'adder_cost(1) = {val}'); assert 0 <= val <= 7, 'Value should be 3-bit'"
+          python -c "import constant_multiplication as cm; print('Even index test: adder_cost(2) =', cm.adder_cost(2))"
+          python -c "import constant_multiplication as cm; types = cm.get_graph_types(1); print(f'Graph types at 1: {len(types)} types')"
 
   release:
     name: Release to PyPI

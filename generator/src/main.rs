@@ -1,6 +1,7 @@
 use derive_more::Display;
+use serde::Serialize;
 use std::{iter::zip, ops::Shr};
-use tracing::{Level, debug, info, span};
+use tracing::{Level, debug, info, span, warn};
 
 fn main() -> Result<()> {
     // Initialize tracing subscriber
@@ -11,17 +12,20 @@ fn main() -> Result<()> {
     let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
-    let max_bits: usize = 12;
+    let max_bits: usize = 15;
     let max_extra_bits: usize = 2;
     let total_bits: usize = max_bits + max_extra_bits;
     let max_value: usize = (1 << (total_bits)) - 1;
+
+    let print_structures = false;
+    let print_missing = true;
 
     info!(
         max_bits,
         max_extra_bits, total_bits, max_value, "Configuration initialized"
     );
 
-    let mut adder_count: Vec<u8> = vec![10; max_value as usize + 1];
+    let mut adder_count: Vec<u8> = vec![7; max_value as usize + 1];
     let mut adder_structures: Vec<Option<Vec<GraphType>>> = vec![None; max_value as usize + 1];
     let cost0: Vec<usize> = vec![1];
     let mut cost0_shifted: Vec<usize> = Vec::new();
@@ -492,6 +496,35 @@ fn main() -> Result<()> {
         (packed.len() as f64 / adder_count.len() as f64) * 100.0
     );
 
+    info!("Saving graph types");
+    let mut graph_types: Vec<Vec<GraphType>> = Vec::new();
+    for (i, structure) in adder_structures.iter().enumerate() {
+        if i % 2 == 1 {
+            if let Some(types) = structure {
+                graph_types.push(types.clone());
+            } else {
+                graph_types.push(vec![]);
+                warn!("No graph types found for value {}", i);
+            }
+        }
+    }
+
+    let serialized = bincode::serialize(&graph_types).expect("Failed to serialize graph types");
+
+    info!("\nGraph types serialization:");
+    info!("  Uncompressed: {} bytes", serialized.len());
+
+    // Compress with lz4
+    let compressed = lz4_flex::compress_prepend_size(&serialized);
+
+    info!("  Compressed (LZ4): {} bytes", compressed.len());
+    info!(
+        "  Compression ratio: {:.2}%",
+        (compressed.len() as f64 / serialized.len() as f64) * 100.0
+    );
+
+    std::fs::write("graph_types.bin", &compressed)?;
+
     debug!("Generating final results");
     // Print results
     let mut result_count = 0;
@@ -499,17 +532,21 @@ fn main() -> Result<()> {
     for c in zip(adder_count.iter(), adder_structures.iter()).enumerate() {
         if let Some(structures) = c.1.1 {
             result_count += 1;
-            /* println!(
-                "Value: {}, Cost: {}, Structures: {:?}",
-                c.0, c.1.0, structures
-            ); */
+            if print_structures {
+                println!(
+                    "Value: {}, Cost: {}, Structures: {:?}",
+                    c.0, c.1.0, structures
+                );
+            }
         }
     }
 
     for c in adder_structures.iter().enumerate() {
         if c.1.is_none() && c.0 % 2 == 1 && c.0 != 1 {
             missing_count += 1;
-            println!("Missing: {}", c.0);
+            if print_missing {
+                println!("Missing: {}", c.0);
+            }
         }
     }
 
@@ -517,22 +554,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Display, Clone)]
+#[derive(Debug, Display, Clone, Serialize)]
 enum GraphType {
-    #[display("Adder({_0}, {_1})")]
-    Adder(usize, usize),
-    #[display("Subtractor({_0}, {_1})")]
-    Subtractor(usize, usize),
-    #[display("Cascade({_0}, {_1})")]
-    Cascade(usize, usize),
-    #[display("Leapfrog1({_0}, {_1}, {_2}, {_3}, {_4})")]
-    Leapfrog1(usize, usize, usize, usize, usize),
-    #[display("Leapfrog2({_0}, {_1}, {_2}, {_3}, {_4})")]
-    Leapfrog2(usize, usize, usize, usize, usize),
-    #[display("Leapfrog3({_0}, {_1}, {_2}, {_3}, {_4})")]
-    Leapfrog3(usize, usize, usize, usize, usize),
-    #[display("Leapfrog4({_0}, {_1}, {_2}, {_3}, {_4})")]
-    Leapfrog4(usize, usize, usize, usize, usize),
+    #[display("A({_0}, {_1})")]
+    A(usize, usize),
+    #[display("S({_0}, {_1})")]
+    S(usize, usize),
+    #[display("C({_0}, {_1})")]
+    C(usize, usize),
+    #[display("L1({_0}, {_1}, {_2}, {_3}, {_4})")]
+    L1(usize, usize, usize, usize, usize),
+    #[display("L2({_0}, {_1}, {_2}, {_3}, {_4})")]
+    L2(usize, usize, usize, usize, usize),
+    #[display("L3({_0}, {_1}, {_2}, {_3}, {_4})")]
+    L3(usize, usize, usize, usize, usize),
+    #[display("L4({_0}, {_1}, {_2}, {_3}, {_4})")]
+    L4(usize, usize, usize, usize, usize),
 }
 
 fn addsub_combinations(
@@ -554,13 +591,17 @@ fn addsub_combinations(
             let sum = findodd(term1 + term2);
             if sum <= max_value && adder_count[sum] >= adder_cost {
                 adder_count[sum] = adder_cost;
-                add_graph_type(adder_structures, sum, GraphType::Adder(term1, term2));
+                add_graph_type(adder_structures, sum, GraphType::A(term1, term2));
             }
             let diff = findodd(term1.abs_diff(term2));
 
             if diff <= max_value && diff != 0 && adder_count[diff] > adder_cost {
                 adder_count[diff] = adder_cost;
-                add_graph_type(adder_structures, diff, GraphType::Subtractor(term1, term2));
+                if term1 >= term2 {
+                    add_graph_type(adder_structures, diff, GraphType::S(term1, term2));
+                } else {
+                    add_graph_type(adder_structures, diff, GraphType::S(term2, term1));
+                }
             }
         }
     }
@@ -585,7 +626,11 @@ fn cascade_combinations(
             let cascade = term1 * term2;
             if cascade <= max_value && adder_count[cascade] >= adder_cost {
                 adder_count[cascade] = adder_cost;
-                add_graph_type(adder_structures, cascade, GraphType::Cascade(term1, term2));
+                if term1 <= term2 {
+                    add_graph_type(adder_structures, cascade, GraphType::C(term1, term2));
+                } else {
+                    add_graph_type(adder_structures, cascade, GraphType::C(term2, term1));
+                }
             }
         }
     }
@@ -619,9 +664,11 @@ fn leapfrog_combinations(
                 continue;
             }
             for &term3 in terms3.iter() {
+                if term2.is_multiple_of(2) && term3.is_multiple_of(2) {
+                    continue;
+                }
                 for &term4 in terms4.iter() {
-                    if term2.is_multiple_of(2) && term3.is_multiple_of(2) && term4.is_multiple_of(2)
-                    {
+                    if term3.is_multiple_of(2) && term4.is_multiple_of(2) {
                         continue;
                     }
                     for &term5 in terms5.iter() {
@@ -644,7 +691,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::Leapfrog1(term1, term2, term3, term4, term5),
+                                GraphType::L1(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -657,7 +704,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::Leapfrog2(term1, term2, term3, term4, term5),
+                                GraphType::L2(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -670,7 +717,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::Leapfrog3(term1, term2, term3, term4, term5),
+                                GraphType::L3(term1, term2, term3, term4, term5),
                             );
                         }
 
@@ -684,7 +731,7 @@ fn leapfrog_combinations(
                             add_graph_type(
                                 adder_structures,
                                 leapfrog as usize,
-                                GraphType::Leapfrog4(term1, term2, term3, term4, term5),
+                                GraphType::L4(term1, term2, term3, term4, term5),
                             );
                         }
                     }
