@@ -1,0 +1,9 @@
+[package]
+name = "constant-multiplication-generator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+derive_more.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

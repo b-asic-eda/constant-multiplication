@@ -43,7 +43,7 @@ fn main() {
 
     // Pack the data file into Rust code
     // Change "data.bin" to your actual input file path
-    pack_data("data.bin", dest_path.to_str().unwrap());
+    pack_data("../data.bin", dest_path.to_str().unwrap());
 
     // Rebuild if the data file changes
     println!("cargo:rerun-if-changed=data.bin");

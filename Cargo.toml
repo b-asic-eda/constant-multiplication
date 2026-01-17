@@ -1,14 +1,17 @@
-[package]
-name = "constmul"
+[workspace]
+resolver = "2"
+
+members = [
+    "constant-multiplication",
+    "generator",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
 derive_more = {version = "2.1.1", features = ["display"]}
 tracing = "0.1.44"
 tracing-subscriber = {version = "0.3", features = ["env-filter"]}
 pyo3 = { version = "0.27", features = ["extension-module"] }
-
-[lib]
-name = "compact_vector"
-crate-type = ["cdylib"]

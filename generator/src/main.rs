@@ -11,7 +11,7 @@ fn main() -> Result<()> {
     let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
-    let max_bits: usize = 24;
+    let max_bits: usize = 12;
     let max_extra_bits: usize = 2;
     let total_bits: usize = max_bits + max_extra_bits;
     let max_value: usize = (1 << (total_bits)) - 1;
@@ -224,260 +224,262 @@ fn main() -> Result<()> {
             shift += 1;
         }
     }
-    debug!("Processing cost 5 combinations");
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost4,
-        &cost0_shifted,
-        5,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost3,
-        &cost1_shifted,
-        5,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2,
-        &cost2_shifted,
-        5,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1,
-        &cost3_shifted,
-        5,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost0,
-        &cost4_shifted,
-        5,
-        max_value,
-    );
-    cascade_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1,
-        &cost4,
-        5,
-        max_value,
-    );
-    cascade_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2,
-        &cost3,
-        5,
-        max_value,
-    );
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        5,
-        max_value,
-    );
+    if total_bits > 12 {
+        debug!("Processing cost 5 combinations");
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost4,
+            &cost0_shifted,
+            5,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost3,
+            &cost1_shifted,
+            5,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2,
+            &cost2_shifted,
+            5,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1,
+            &cost3_shifted,
+            5,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost0,
+            &cost4_shifted,
+            5,
+            max_value,
+        );
+        cascade_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1,
+            &cost4,
+            5,
+            max_value,
+        );
+        cascade_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2,
+            &cost3,
+            5,
+            max_value,
+        );
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            5,
+            max_value,
+        );
 
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        5,
-        max_value,
-    );
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            5,
+            max_value,
+        );
 
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost2_shifted,
-        5,
-        max_value,
-    );
-
-    let mut cost5: Vec<usize> = Vec::new();
-    for i in adder_count.iter().enumerate() {
-        if *i.1 == 5 {
-            cost5.push(i.0);
-        }
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost2_shifted,
+            5,
+            max_value,
+        );
     }
-    debug!(cost5_count = cost5.len(), "Cost 5 values found");
-
-    let mut cost5_shifted: Vec<usize> = Vec::new();
-    for i in cost5.iter() {
-        let mut shift = 0;
-        while (i << shift) <= max_value {
-            cost5_shifted.push(i << shift);
-            shift += 1;
+    if total_bits > 19 {
+        let mut cost5: Vec<usize> = Vec::new();
+        for i in adder_count.iter().enumerate() {
+            if *i.1 == 5 {
+                cost5.push(i.0);
+            }
         }
+        debug!(cost5_count = cost5.len(), "Cost 5 values found");
+
+        let mut cost5_shifted: Vec<usize> = Vec::new();
+        for i in cost5.iter() {
+            let mut shift = 0;
+            while (i << shift) <= max_value {
+                cost5_shifted.push(i << shift);
+                shift += 1;
+            }
+        }
+        debug!("Processing cost 6 combinations");
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost5,
+            &cost0_shifted,
+            6,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost4,
+            &cost1_shifted,
+            6,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost3,
+            &cost2_shifted,
+            6,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2,
+            &cost3_shifted,
+            6,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1,
+            &cost4_shifted,
+            6,
+            max_value,
+        );
+        addsub_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost0,
+            &cost5_shifted,
+            6,
+            max_value,
+        );
+        cascade_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1,
+            &cost5,
+            6,
+            max_value,
+        );
+        cascade_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2,
+            &cost4,
+            6,
+            max_value,
+        );
+        cascade_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost3,
+            &cost3,
+            6,
+            max_value,
+        );
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            max_value,
+        );
+
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost3_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            max_value,
+        );
+
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost2_shifted,
+            6,
+            max_value,
+        );
+
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost3_shifted,
+            6,
+            max_value,
+        );
+
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost2_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            max_value,
+        );
+
+        leapfrog_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost2_shifted,
+            6,
+            max_value,
+        );
     }
-
-    debug!("Processing cost 6 combinations");
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost5,
-        &cost0_shifted,
-        6,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost4,
-        &cost1_shifted,
-        6,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost3,
-        &cost2_shifted,
-        6,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2,
-        &cost3_shifted,
-        6,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1,
-        &cost4_shifted,
-        6,
-        max_value,
-    );
-    addsub_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost0,
-        &cost5_shifted,
-        6,
-        max_value,
-    );
-    cascade_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1,
-        &cost5,
-        6,
-        max_value,
-    );
-    cascade_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2,
-        &cost4,
-        6,
-        max_value,
-    );
-    cascade_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost3,
-        &cost3,
-        6,
-        max_value,
-    );
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        6,
-        max_value,
-    );
-
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost3_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        6,
-        max_value,
-    );
-
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost2_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost2_shifted,
-        6,
-        max_value,
-    );
-
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost0_shifted,
-        &cost3_shifted,
-        6,
-        max_value,
-    );
-
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost2_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        6,
-        max_value,
-    );
-
-    leapfrog_combinations(
-        &mut adder_count,
-        &mut adder_structures,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost1_shifted,
-        &cost0_shifted,
-        &cost2_shifted,
-        6,
-        max_value,
-    );
 
     info!("Packing and saving data");
     let (packed, count) = pack_sparse_vector(&adder_count);
