@@ -66,14 +66,13 @@ fn main() {
     let dest_path = Path::new(&out_dir).join("embedded_data.rs");
 
     // Pack the data file into Rust code
-    // Change "data.bin" to your actual input file path
-    pack_data("../data.bin", dest_path.to_str().unwrap());
+    pack_data("adder_cost.bin", dest_path.to_str().unwrap());
 
     // Pack the graph types data
     let graph_dest_path = Path::new(&out_dir).join("embedded_graph_types.rs");
-    pack_graph_types("../graph_types.bin", graph_dest_path.to_str().unwrap());
+    pack_graph_types("graph_types.bin", graph_dest_path.to_str().unwrap());
 
     // Rebuild if either data file changes
-    println!("cargo:rerun-if-changed=../data.bin");
-    println!("cargo:rerun-if-changed=../graph_types.bin");
+    println!("cargo:rerun-if-changed=adder_cost.bin");
+    println!("cargo:rerun-if-changed=graph_types.bin");
 }

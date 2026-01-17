@@ -487,7 +487,7 @@ fn main() -> Result<()> {
 
     info!("Packing and saving data");
     let (packed, count) = pack_sparse_vector(&adder_count);
-    save_packed_data("data.bin", &packed, count)?;
+    save_packed_data("constant-multiplication/adder_cost.bin", &packed, count)?;
 
     info!("Packed {} odd values into {} bytes", count, packed.len());
     info!("Original size: {} bytes", adder_count.len());
@@ -523,7 +523,7 @@ fn main() -> Result<()> {
         (compressed.len() as f64 / serialized.len() as f64) * 100.0
     );
 
-    std::fs::write("graph_types.bin", &compressed)?;
+    std::fs::write("constant-multiplication/graph_types.bin", &compressed)?;
 
     debug!("Generating final results");
     // Print results
@@ -771,7 +771,7 @@ fn findodd_u128(n: u128) -> u128 {
     n >> shift
 }
 
-// prepare_data.rs - Run this once to create data.bin
+// prepare_data.rs - Run this once to create adder_cost.bin
 use std::fs::File;
 use std::io::{Result, Write};
 
