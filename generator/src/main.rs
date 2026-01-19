@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
-    let max_bits: usize = 15;
+    let max_bits: usize = 21;
     let max_extra_bits: usize = 2;
     let total_bits: usize = max_bits + max_extra_bits;
     let max_value: usize = 1 << (total_bits);
@@ -27,8 +27,8 @@ fn main() -> Result<()> {
         max_extra_bits, total_bits, max_value, "Configuration initialized"
     );
 
-    let mut adder_count: Vec<u8> = vec![7; max_value as usize + 1];
-    let mut adder_structures: Vec<Option<Vec<GraphType>>> = vec![None; max_value as usize + 1];
+    let mut adder_count: Vec<u8> = vec![7; max_value + 1];
+    let mut adder_structures: Vec<Option<Vec<GraphType>>> = vec![None; max_value + 1];
     let cost0: Vec<usize> = vec![1];
     let mut cost0_shifted: Vec<usize> = Vec::new();
     for i in 0..total_bits {
@@ -87,6 +87,7 @@ fn main() -> Result<()> {
         &cost1,
         2,
         max_value,
+        true,
     );
     let mut cost2: Vec<usize> = Vec::new();
     for i in adder_count.iter().enumerate() {
@@ -136,6 +137,7 @@ fn main() -> Result<()> {
         &cost2,
         3,
         max_value,
+        false,
     );
 
     let mut cost3: Vec<usize> = Vec::new();
@@ -193,6 +195,7 @@ fn main() -> Result<()> {
         &cost3,
         4,
         max_value,
+        false,
     );
     cascade_combinations(
         &mut adder_count,
@@ -201,6 +204,7 @@ fn main() -> Result<()> {
         &cost2,
         4,
         max_value,
+        true,
     );
     leapfrog4_combinations(
         &mut adder_count,
@@ -278,6 +282,7 @@ fn main() -> Result<()> {
             &cost4,
             5,
             max_value,
+            false,
         );
         cascade_combinations(
             &mut adder_count,
@@ -286,6 +291,7 @@ fn main() -> Result<()> {
             &cost3,
             5,
             max_value,
+            false,
         );
         leapfrog5_combinations(
             &mut adder_count,
@@ -394,6 +400,7 @@ fn main() -> Result<()> {
             &cost5,
             6,
             max_value,
+            false,
         );
         cascade_combinations(
             &mut adder_count,
@@ -402,6 +409,7 @@ fn main() -> Result<()> {
             &cost4,
             6,
             max_value,
+            false,
         );
         cascade_combinations(
             &mut adder_count,
@@ -410,6 +418,7 @@ fn main() -> Result<()> {
             &cost3,
             6,
             max_value,
+            true,
         );
         leapfrog5_combinations(
             &mut adder_count,
@@ -445,7 +454,7 @@ fn main() -> Result<()> {
             max_value,
         );
 
-        leapfrog4_combinations(
+        /* leapfrog4_combinations(
             &mut adder_count,
             &mut adder_structures,
             &cost1_shifted,
@@ -454,7 +463,7 @@ fn main() -> Result<()> {
             &cost3_shifted,
             6,
             max_value,
-        );
+        ); */
 
         leapfrog5_combinations(
             &mut adder_count,
@@ -468,7 +477,7 @@ fn main() -> Result<()> {
             max_value,
         );
 
-        leapfrog5_combinations(
+        /* leapfrog5_combinations(
             &mut adder_count,
             &mut adder_structures,
             &cost1_shifted,
@@ -478,7 +487,7 @@ fn main() -> Result<()> {
             &cost2_shifted,
             6,
             max_value,
-        );
+        ); */
     }
 
     info!("Packing and saving data");
@@ -578,10 +587,10 @@ enum GraphType {
 }
 
 fn addsub_combinations(
-    adder_count: &mut Vec<u8>,
-    adder_structures: &mut Vec<Option<Vec<GraphType>>>,
-    terms: &Vec<usize>,
-    terms_shifted: &Vec<usize>,
+    adder_count: &mut [u8],
+    adder_structures: &mut [Option<Vec<GraphType>>],
+    terms: &[usize],
+    terms_shifted: &[usize],
     adder_cost: u8,
     max_value: usize,
 ) {
@@ -613,12 +622,13 @@ fn addsub_combinations(
 }
 
 fn cascade_combinations(
-    adder_count: &mut Vec<u8>,
-    adder_structures: &mut Vec<Option<Vec<GraphType>>>,
-    terms1: &Vec<usize>,
-    terms2: &Vec<usize>,
+    adder_count: &mut [u8],
+    adder_structures: &mut [Option<Vec<GraphType>>],
+    terms1: &[usize],
+    terms2: &[usize],
     adder_cost: u8,
     max_value: usize,
+    same_terms: bool,
 ) {
     debug!(
         terms1_count = terms1.len(),
@@ -628,6 +638,9 @@ fn cascade_combinations(
     );
     for &term1 in terms1.iter() {
         for &term2 in terms2.iter() {
+            if same_terms && term2 < term1 {
+                continue;
+            }
             let cascade = term1 * term2;
             if cascade <= max_value && adder_count[cascade] >= adder_cost {
                 adder_count[cascade] = adder_cost;
@@ -642,13 +655,13 @@ fn cascade_combinations(
 }
 
 fn leapfrog5_combinations(
-    adder_count: &mut Vec<u8>,
-    adder_structures: &mut Vec<Option<Vec<GraphType>>>,
-    terms1: &Vec<usize>,
-    terms2: &Vec<usize>,
-    terms3: &Vec<usize>,
-    terms4: &Vec<usize>,
-    terms5: &Vec<usize>,
+    adder_count: &mut [u8],
+    adder_structures: &mut [Option<Vec<GraphType>>],
+    terms1: &[usize],
+    terms2: &[usize],
+    terms3: &[usize],
+    terms4: &[usize],
+    terms5: &[usize],
     adder_cost: u8,
     max_value: usize,
 ) {
@@ -659,7 +672,7 @@ fn leapfrog5_combinations(
         terms4_count = terms4.len(),
         terms5_count = terms5.len(),
         cost = adder_cost,
-        "leapfrog_combinations: starting"
+        "leapfrog5_combinations: starting"
     );
     let max_value_u128 = max_value as u128;
 
@@ -669,15 +682,22 @@ fn leapfrog5_combinations(
                 continue;
             }
             for &term3 in terms3.iter() {
-                if term2.is_multiple_of(2) && term3.is_multiple_of(2) {
+                if findodd(term3) == 1
+                    || ((term1.is_multiple_of(2) || term2.is_multiple_of(2))
+                        && term3.is_multiple_of(2))
+                {
                     continue;
                 }
                 for &term4 in terms4.iter() {
-                    if term3.is_multiple_of(2) && term4.is_multiple_of(2) {
+                    if (term1.is_multiple_of(2) || term3.is_multiple_of(2))
+                        && term4.is_multiple_of(2)
+                    {
                         continue;
                     }
                     for &term5 in terms5.iter() {
-                        if term4.is_multiple_of(2) && term5.is_multiple_of(2) {
+                        if (term3.is_multiple_of(2) || term4.is_multiple_of(2))
+                            && term5.is_multiple_of(2)
+                        {
                             continue;
                         }
 
@@ -747,12 +767,12 @@ fn leapfrog5_combinations(
 }
 
 fn leapfrog4_combinations(
-    adder_count: &mut Vec<u8>,
-    adder_structures: &mut Vec<Option<Vec<GraphType>>>,
-    terms1: &Vec<usize>,
-    terms2: &Vec<usize>,
-    terms4: &Vec<usize>,
-    terms5: &Vec<usize>,
+    adder_count: &mut [u8],
+    adder_structures: &mut [Option<Vec<GraphType>>],
+    terms1: &[usize],
+    terms2: &[usize],
+    terms4: &[usize],
+    terms5: &[usize],
     adder_cost: u8,
     max_value: usize,
 ) {
@@ -762,7 +782,7 @@ fn leapfrog4_combinations(
         terms4_count = terms4.len(),
         terms5_count = terms5.len(),
         cost = adder_cost,
-        "leapfrog_combinations: starting"
+        "leapfrog4_combinations: starting"
     );
     let max_value_u128 = max_value as u128;
 
@@ -772,6 +792,10 @@ fn leapfrog4_combinations(
                 continue;
             }
             for &term4 in terms4.iter() {
+                if term1.is_multiple_of(2) && term4.is_multiple_of(2) {
+                    continue;
+                }
+
                 for &term5 in terms5.iter() {
                     if term4.is_multiple_of(2) && term5.is_multiple_of(2) {
                         continue;
@@ -840,7 +864,7 @@ fn leapfrog4_combinations(
 }
 
 fn add_graph_type(
-    adder_structures: &mut Vec<Option<Vec<GraphType>>>,
+    adder_structures: &mut [Option<Vec<GraphType>>],
     result: usize,
     graph_type: GraphType,
 ) {
@@ -874,7 +898,7 @@ use std::fs::File;
 use std::io::{Result, Write};
 
 fn pack_sparse_vector(sparse_vec: &[u8]) -> (Vec<u8>, usize) {
-    let odd_count = (sparse_vec.len() + 1) / 2;
+    let odd_count = sparse_vec.len().div_ceil(2);
     let mut packed = Vec::new();
     let mut bit_buffer = 0u32;
     let mut bits_in_buffer = 0;
