@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
-    let max_bits: usize = 21;
+    let max_bits: usize = 17;
     let max_extra_bits: usize = 2;
     let total_bits: usize = max_bits + max_extra_bits;
     let max_value: usize = 1 << (total_bits);
@@ -677,10 +677,12 @@ fn leapfrog5_combinations(
     let max_value_u128 = max_value as u128;
 
     for &term1 in terms1.iter() {
+        let t1 = term1 as u128;
         for &term2 in terms2.iter() {
             if term1.is_multiple_of(2) && term2.is_multiple_of(2) {
                 continue;
             }
+            let t2 = term2 as u128;
             for &term3 in terms3.iter() {
                 if findodd(term3) == 1
                     || ((term1.is_multiple_of(2) || term2.is_multiple_of(2))
@@ -688,12 +690,14 @@ fn leapfrog5_combinations(
                 {
                     continue;
                 }
+                let t3 = term3 as u128;
                 for &term4 in terms4.iter() {
                     if (term1.is_multiple_of(2) || term3.is_multiple_of(2))
                         && term4.is_multiple_of(2)
                     {
                         continue;
                     }
+                    let t4 = term4 as u128;
                     for &term5 in terms5.iter() {
                         if (term3.is_multiple_of(2) || term4.is_multiple_of(2))
                             && term5.is_multiple_of(2)
@@ -701,10 +705,6 @@ fn leapfrog5_combinations(
                             continue;
                         }
 
-                        let t1 = term1 as u128;
-                        let t2 = term2 as u128;
-                        let t3 = term3 as u128;
-                        let t4 = term4 as u128;
                         let t5 = term5 as u128;
 
                         let leapfrog = findodd_u128(t5 * (t1 * t3 + t2) + t1 * t4);
@@ -738,12 +738,16 @@ fn leapfrog5_combinations(
                             && leapfrog <= max_value_u128
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
-                            adder_count[leapfrog as usize] = adder_cost;
-                            add_graph_type(
-                                adder_structures,
-                                leapfrog as usize,
-                                GraphType::Leapfrog5_3(term1, term2, term3, term4, term5),
-                            );
+                            // Symmetric case (with 5_2)
+                            // t5 * ((t1 * t3 - 1)) + t1 * 1 = (t1 * (t5 * t3 + 1)) - t5 * 1)
+                            if t2 != 1 || t4 != 1 {
+                                adder_count[leapfrog as usize] = adder_cost;
+                                add_graph_type(
+                                    adder_structures,
+                                    leapfrog as usize,
+                                    GraphType::Leapfrog5_3(term1, term2, term3, term4, term5),
+                                );
+                            }
                         }
 
                         let leapfrog =
@@ -787,23 +791,23 @@ fn leapfrog4_combinations(
     let max_value_u128 = max_value as u128;
 
     for &term1 in terms1.iter() {
+        let t1 = term1 as u128;
         for &term2 in terms2.iter() {
             if term1.is_multiple_of(2) && term2.is_multiple_of(2) {
                 continue;
             }
+            let t2 = term2 as u128;
             for &term4 in terms4.iter() {
                 if term1.is_multiple_of(2) && term4.is_multiple_of(2) {
                     continue;
                 }
+                let t4 = term4 as u128;
 
                 for &term5 in terms5.iter() {
                     if term4.is_multiple_of(2) && term5.is_multiple_of(2) {
                         continue;
                     }
 
-                    let t1 = term1 as u128;
-                    let t2 = term2 as u128;
-                    let t4 = term4 as u128;
                     let t5 = term5 as u128;
 
                     let leapfrog = findodd_u128(t5 * (t1 + t2) + t1 * t4);
@@ -811,12 +815,16 @@ fn leapfrog4_combinations(
                         && leapfrog <= max_value_u128
                         && adder_count[leapfrog as usize] >= adder_cost
                     {
-                        adder_count[leapfrog as usize] = adder_cost;
-                        add_graph_type(
-                            adder_structures,
-                            leapfrog as usize,
-                            GraphType::Leapfrog4_1(term1, term2, term4, term5),
-                        );
+                        // Symmetric case
+                        // t5 * (t1 + t2) + t1 * t4 == t1 * (t5 + t4) + t5 * t2
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                            adder_count[leapfrog as usize] = adder_cost;
+                            add_graph_type(
+                                adder_structures,
+                                leapfrog as usize,
+                                GraphType::Leapfrog4_1(term1, term2, term4, term5),
+                            );
+                        }
                     }
 
                     let leapfrog = findodd_u128((t5 * (t1 + t2)).abs_diff(t1 * t4));
@@ -824,12 +832,16 @@ fn leapfrog4_combinations(
                         && leapfrog <= max_value_u128
                         && adder_count[leapfrog as usize] >= adder_cost
                     {
-                        adder_count[leapfrog as usize] = adder_cost;
-                        add_graph_type(
-                            adder_structures,
-                            leapfrog as usize,
-                            GraphType::Leapfrog4_2(term1, term2, term4, term5),
-                        );
+                        // Symmetric case (with 4_3)
+                        // t5 * (t1 - t2) + t1 * t4 == t1 * (t5 + t4) - t5 * t2
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                            adder_count[leapfrog as usize] = adder_cost;
+                            add_graph_type(
+                                adder_structures,
+                                leapfrog as usize,
+                                GraphType::Leapfrog4_2(term1, term2, term4, term5),
+                            );
+                        }
                     }
 
                     let leapfrog = findodd_u128(t5 * (t1.abs_diff(t2)) + t1 * t4);
@@ -837,12 +849,16 @@ fn leapfrog4_combinations(
                         && leapfrog <= max_value_u128
                         && adder_count[leapfrog as usize] >= adder_cost
                     {
-                        adder_count[leapfrog as usize] = adder_cost;
-                        add_graph_type(
-                            adder_structures,
-                            leapfrog as usize,
-                            GraphType::Leapfrog4_3(term1, term2, term4, term5),
-                        );
+                        // Symmetric case (with 4_2)
+                        // t5 * (t1 - t2) + t1 * t4 == t1 * (t5 + t4) - t5 * t2
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                            adder_count[leapfrog as usize] = adder_cost;
+                            add_graph_type(
+                                adder_structures,
+                                leapfrog as usize,
+                                GraphType::Leapfrog4_3(term1, term2, term4, term5),
+                            );
+                        }
                     }
 
                     let leapfrog = findodd_u128((t5 * (t1.abs_diff(t2))).abs_diff(t1 * t4));
@@ -1017,7 +1033,7 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
                     buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
                 }
                 GraphType::Leapfrog5_1(a, b, c, d, e) => {
-                    buf.push(3);
+                    buf.push(7);
                     let mut a_buf = varint_encode::usize_buffer();
                     buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
                     let mut b_buf = varint_encode::usize_buffer();
@@ -1030,7 +1046,7 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
                     buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
                 }
                 GraphType::Leapfrog5_2(a, b, c, d, e) => {
-                    buf.push(4);
+                    buf.push(8);
                     let mut a_buf = varint_encode::usize_buffer();
                     buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
                     let mut b_buf = varint_encode::usize_buffer();
@@ -1043,7 +1059,7 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
                     buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
                 }
                 GraphType::Leapfrog5_3(a, b, c, d, e) => {
-                    buf.push(5);
+                    buf.push(9);
                     let mut a_buf = varint_encode::usize_buffer();
                     buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
                     let mut b_buf = varint_encode::usize_buffer();
@@ -1056,7 +1072,7 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
                     buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
                 }
                 GraphType::Leapfrog5_4(a, b, c, d, e) => {
-                    buf.push(6);
+                    buf.push(10);
                     let mut a_buf = varint_encode::usize_buffer();
                     buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
                     let mut b_buf = varint_encode::usize_buffer();

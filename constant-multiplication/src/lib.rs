@@ -5,9 +5,29 @@ use pyo3::types::PyList;
 use serde::{Deserialize, Serialize};
 use unsigned_varint::decode as varint_decode;
 
-// Include the compile-time generated data
-include!(concat!(env!("OUT_DIR"), "/embedded_adder_cost.rs"));
-include!(concat!(env!("OUT_DIR"), "/embedded_graph_types.rs"));
+// Include the data files directly at compile time
+const DATA_FILE: &[u8] = include_bytes!("../adder_cost.bin");
+const GRAPH_TYPES_FILE: &[u8] = include_bytes!("../graph_types.bin");
+
+// Parse the adder cost data at compile time
+const fn parse_data_header() -> usize {
+    // First 8 bytes are the count
+    let count = u64::from_le_bytes([
+        DATA_FILE[0],
+        DATA_FILE[1],
+        DATA_FILE[2],
+        DATA_FILE[3],
+        DATA_FILE[4],
+        DATA_FILE[5],
+        DATA_FILE[6],
+        DATA_FILE[7],
+    ]) as usize;
+    count // count and offset where data starts
+}
+
+const DATA_COUNT: usize = parse_data_header();
+const DATA_OFFSET: usize = 8;
+const GRAPH_TYPES_BYTES: &[u8] = GRAPH_TYPES_FILE;
 
 // GraphType enum definition (must match prepare_data.rs)
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -384,16 +404,17 @@ fn adder_cost(mut idx: usize) -> PyResult<u8> {
     let byte_offset = bit_offset / 8;
     let bit_in_byte = bit_offset % 8;
 
-    if byte_offset >= DATA_BYTES.len() {
+    if byte_offset >= DATA_FILE.len() - DATA_OFFSET {
         return Err(PyValueError::new_err("Data corruption"));
     }
 
-    let mut val = (DATA_BYTES[byte_offset] >> bit_in_byte) & 0b111;
+    let mut val = (DATA_FILE[byte_offset + DATA_OFFSET] >> bit_in_byte) & 0b111;
 
     // Handle values that span two bytes
-    if bit_in_byte > 5 && byte_offset + 1 < DATA_BYTES.len() {
+    if bit_in_byte > 5 && byte_offset + 1 < DATA_FILE.len() - DATA_OFFSET {
         let bits_from_next = 3 - (8 - bit_in_byte);
-        val |= (DATA_BYTES[byte_offset + 1] & ((1 << bits_from_next) - 1)) << (8 - bit_in_byte);
+        val |= (DATA_FILE[byte_offset + 1 + DATA_OFFSET] & ((1 << bits_from_next) - 1))
+            << (8 - bit_in_byte);
     }
 
     Ok(val & 0b111)
@@ -405,7 +426,7 @@ fn info() -> String {
     format!(
         "Embedded data: {} elements, {} bytes packed, graph types: {} bytes compressed",
         DATA_COUNT * 2,
-        DATA_BYTES.len(),
+        DATA_FILE.len() - DATA_OFFSET,
         GRAPH_TYPES_BYTES.len()
     )
 }
