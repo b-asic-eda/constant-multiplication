@@ -15,10 +15,14 @@ enum GraphTypeInternal {
     Adder(usize, usize),
     Subtractor(usize, usize),
     Cascade(usize, usize),
-    Leapfrog1(usize, usize, usize, usize, usize),
-    Leapfrog2(usize, usize, usize, usize, usize),
-    Leapfrog3(usize, usize, usize, usize, usize),
-    Leapfrog4(usize, usize, usize, usize, usize),
+    Leapfrog4_1(usize, usize, usize, usize),
+    Leapfrog4_2(usize, usize, usize, usize),
+    Leapfrog4_3(usize, usize, usize, usize),
+    Leapfrog4_4(usize, usize, usize, usize),
+    Leapfrog5_1(usize, usize, usize, usize, usize),
+    Leapfrog5_2(usize, usize, usize, usize, usize),
+    Leapfrog5_3(usize, usize, usize, usize, usize),
+    Leapfrog5_4(usize, usize, usize, usize, usize),
 }
 
 // GraphType as a Python class
@@ -31,21 +35,51 @@ struct GraphType {
     params: Vec<usize>,
 }
 
+fn extract_shift(value: usize) -> String {
+    let shift = value.trailing_zeros();
+    let current = value >> shift;
+    if shift == 0 {
+        current.to_string()
+    } else {
+        format!("{current} << {shift}")
+    }
+}
+
 #[pymethods]
 impl GraphType {
     fn __repr__(&self) -> String {
         match self.params.len() {
-            2 => format!("{}({}, {})", self.variant, self.params[0], self.params[1]),
+            2 => format!(
+                "{}({}, {})",
+                self.variant,
+                extract_shift(self.params[0]),
+                extract_shift(self.params[1])
+            ),
+            4 => format!(
+                "{}({}, {}, {}, {})",
+                self.variant,
+                extract_shift(self.params[0]),
+                extract_shift(self.params[1]),
+                extract_shift(self.params[2]),
+                extract_shift(self.params[3]),
+            ),
             5 => format!(
                 "{}({}, {}, {}, {}, {})",
                 self.variant,
-                self.params[0],
-                self.params[1],
-                self.params[2],
-                self.params[3],
-                self.params[4]
+                extract_shift(self.params[0]),
+                extract_shift(self.params[1]),
+                extract_shift(self.params[2]),
+                extract_shift(self.params[3]),
+                extract_shift(self.params[4])
             ),
-            _ => format!("{}({:?})", self.variant, self.params),
+            _ => format!(
+                "{}({:?})",
+                self.variant,
+                self.params
+                    .iter()
+                    .map(|&v| extract_shift(v))
+                    .collect::<Vec<_>>()
+            ),
         }
     }
 }
@@ -65,20 +99,36 @@ impl From<GraphTypeInternal> for GraphType {
                 variant: "Cascade".to_string(),
                 params: vec![a, b],
             },
-            GraphTypeInternal::Leapfrog1(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog1".to_string(),
+            GraphTypeInternal::Leapfrog4_1(a, b, c, d) => GraphType {
+                variant: "Leapfrog4_1".to_string(),
+                params: vec![a, b, c, d],
+            },
+            GraphTypeInternal::Leapfrog4_2(a, b, c, d) => GraphType {
+                variant: "Leapfrog4_2".to_string(),
+                params: vec![a, b, c, d],
+            },
+            GraphTypeInternal::Leapfrog4_3(a, b, c, d) => GraphType {
+                variant: "Leapfrog4_3".to_string(),
+                params: vec![a, b, c, d],
+            },
+            GraphTypeInternal::Leapfrog4_4(a, b, c, d) => GraphType {
+                variant: "Leapfrog4_4".to_string(),
+                params: vec![a, b, c, d],
+            },
+            GraphTypeInternal::Leapfrog5_1(a, b, c, d, e) => GraphType {
+                variant: "Leapfrog5_1".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::Leapfrog2(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog2".to_string(),
+            GraphTypeInternal::Leapfrog5_2(a, b, c, d, e) => GraphType {
+                variant: "Leapfrog5_2".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::Leapfrog3(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog3".to_string(),
+            GraphTypeInternal::Leapfrog5_3(a, b, c, d, e) => GraphType {
+                variant: "Leapfrog5_3".to_string(),
                 params: vec![a, b, c, d, e],
             },
-            GraphTypeInternal::Leapfrog4(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog4".to_string(),
+            GraphTypeInternal::Leapfrog5_4(a, b, c, d, e) => GraphType {
+                variant: "Leapfrog5_4".to_string(),
                 params: vec![a, b, c, d, e],
             },
         }
@@ -162,12 +212,9 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                     let (d, rest) = varint_decode::usize(remaining)
                         .map_err(|e| format!("Failed to decode usize: {}", e))?;
                     remaining = rest;
-                    let (e, rest) = varint_decode::usize(remaining)
-                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
-                    remaining = rest;
                     GraphType {
-                        variant: "Leapfrog1".to_string(),
-                        params: vec![a, b, c, d, e],
+                        variant: "Leapfrog4_1".to_string(),
+                        params: vec![a, b, c, d],
                     }
                 }
                 4 => {
@@ -183,12 +230,9 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                     let (d, rest) = varint_decode::usize(remaining)
                         .map_err(|e| format!("Failed to decode usize: {}", e))?;
                     remaining = rest;
-                    let (e, rest) = varint_decode::usize(remaining)
-                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
-                    remaining = rest;
                     GraphType {
-                        variant: "Leapfrog2".to_string(),
-                        params: vec![a, b, c, d, e],
+                        variant: "Leapfrog4_2".to_string(),
+                        params: vec![a, b, c, d],
                     }
                 }
                 5 => {
@@ -204,15 +248,30 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                     let (d, rest) = varint_decode::usize(remaining)
                         .map_err(|e| format!("Failed to decode usize: {}", e))?;
                     remaining = rest;
-                    let (e, rest) = varint_decode::usize(remaining)
-                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
-                    remaining = rest;
                     GraphType {
-                        variant: "Leapfrog3".to_string(),
-                        params: vec![a, b, c, d, e],
+                        variant: "Leapfrog4_3".to_string(),
+                        params: vec![a, b, c, d],
                     }
                 }
                 6 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog4_4".to_string(),
+                        params: vec![a, b, c, d],
+                    }
+                }
+                7 => {
                     let (a, rest) = varint_decode::usize(remaining)
                         .map_err(|e| format!("Failed to decode usize: {}", e))?;
                     remaining = rest;
@@ -229,7 +288,70 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                         .map_err(|e| format!("Failed to decode usize: {}", e))?;
                     remaining = rest;
                     GraphType {
-                        variant: "Leapfrog4".to_string(),
+                        variant: "Leapfrog5_1".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                8 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog5_2".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                9 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog5_3".to_string(),
+                        params: vec![a, b, c, d, e],
+                    }
+                }
+                10 => {
+                    let (a, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (b, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (c, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (d, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    let (e, rest) = varint_decode::usize(remaining)
+                        .map_err(|e| format!("Failed to decode usize: {}", e))?;
+                    remaining = rest;
+                    GraphType {
+                        variant: "Leapfrog5_4".to_string(),
                         params: vec![a, b, c, d, e],
                     }
                 }
