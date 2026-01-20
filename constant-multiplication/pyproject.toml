@@ -7,13 +7,15 @@ name = "constant-multiplication"
 version = "0.1.0"
 description = "Library to obtain efficient constant, shift-and-add-based, multipliers"
 requires-python = ">=3.8"
-license = {text = "MIT OR Apache-2.0"}
+license = {text = "MIT"}
+authors = [
+    {name = "Oscar Gustafsson", email = "oscar.gustafsson@gmail.com"},
+]
 keywords = ["constant multiplication", "shift-and-add"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
-    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",

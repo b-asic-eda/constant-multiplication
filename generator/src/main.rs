@@ -1,7 +1,5 @@
-use derive_more::Display;
-use serde::Serialize;
 use std::{iter::zip, ops::Shr};
-use tracing::{Level, debug, info, span, warn};
+use tracing::{Level, debug, info, warn};
 use unsigned_varint::encode as varint_encode;
 
 type AdderStructures = [Option<Vec<GraphType>>];
@@ -12,7 +10,6 @@ fn main() -> Result<()> {
         .with_max_level(Level::DEBUG)
         .init();
 
-    let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
     let max_bits: usize = 19;
@@ -449,7 +446,7 @@ fn main() -> Result<()> {
     // Serialize with varint encoding
     let serialized = serialize_graph_types(&graph_types);
 
-    info!("\nGraph types serialization:");
+    info!("Graph types serialization:");
     info!("  Varint-encoded: {} bytes", serialized.len());
 
     // Compress with lz4
@@ -492,29 +489,18 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Display, Clone, Serialize)]
+#[derive(Debug, Clone)]
 enum GraphType {
-    #[display("A({_0}, {_1})")]
     Adder(usize, usize),
-    #[display("S({_0}, {_1})")]
     Subtractor(usize, usize),
-    #[display("C({_0}, {_1})")]
     Cascade(usize, usize),
-    #[display("L1({_0}, {_1}, {_2}, {_3})")]
     Leapfrog4_1(usize, usize, usize, usize),
-    #[display("L2({_0}, {_1}, {_2}, {_3})")]
     Leapfrog4_2(usize, usize, usize, usize),
-    #[display("L3({_0}, {_1}, {_2}, {_3})")]
     Leapfrog4_3(usize, usize, usize, usize),
-    #[display("L4({_0}, {_1}, {_2}, {_3})")]
     Leapfrog4_4(usize, usize, usize, usize),
-    #[display("L1({_0}, {_1}, {_2}, {_3}, {_4})")]
     Leapfrog5_1(usize, usize, usize, usize, usize),
-    #[display("L2({_0}, {_1}, {_2}, {_3}, {_4})")]
     Leapfrog5_2(usize, usize, usize, usize, usize),
-    #[display("L3({_0}, {_1}, {_2}, {_3}, {_4})")]
     Leapfrog5_3(usize, usize, usize, usize, usize),
-    #[display("L4({_0}, {_1}, {_2}, {_3}, {_4})")]
     Leapfrog5_4(usize, usize, usize, usize, usize),
 }
 

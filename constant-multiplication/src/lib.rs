@@ -2,7 +2,6 @@
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
-use serde::{Deserialize, Serialize};
 use unsigned_varint::decode as varint_decode;
 
 // Include the data files directly at compile time
@@ -31,22 +30,6 @@ const GRAPH_TYPES_BYTES: &[u8] = GRAPH_TYPES_FILE;
 // Compile-time validation of DATA_FILE length
 const _: () = assert!(DATA_FILE.len() >= DATA_OFFSET, "DATA_FILE is too small");
 
-// GraphType enum definition (must match prepare_data.rs)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum GraphTypeInternal {
-    Adder(usize, usize),
-    Subtractor(usize, usize),
-    Cascade(usize, usize),
-    Leapfrog4_1(usize, usize, usize, usize),
-    Leapfrog4_2(usize, usize, usize, usize),
-    Leapfrog4_3(usize, usize, usize, usize),
-    Leapfrog4_4(usize, usize, usize, usize),
-    Leapfrog5_1(usize, usize, usize, usize, usize),
-    Leapfrog5_2(usize, usize, usize, usize, usize),
-    Leapfrog5_3(usize, usize, usize, usize, usize),
-    Leapfrog5_4(usize, usize, usize, usize, usize),
-}
-
 // GraphType as a Python class
 #[pyclass]
 #[derive(Clone)]
@@ -72,57 +55,6 @@ impl GraphType {
     fn __repr__(&self) -> String {
         let shifted_params: Vec<String> = self.params.iter().map(|&v| extract_shift(v)).collect();
         format!("{}({})", self.variant, shifted_params.join(", "))
-    }
-}
-
-impl From<GraphTypeInternal> for GraphType {
-    fn from(gt: GraphTypeInternal) -> Self {
-        match gt {
-            GraphTypeInternal::Adder(a, b) => GraphType {
-                variant: "Adder",
-                params: vec![a, b],
-            },
-            GraphTypeInternal::Subtractor(a, b) => GraphType {
-                variant: "Subtractor",
-                params: vec![a, b],
-            },
-            GraphTypeInternal::Cascade(a, b) => GraphType {
-                variant: "Cascade",
-                params: vec![a, b],
-            },
-            GraphTypeInternal::Leapfrog4_1(a, b, c, d) => GraphType {
-                variant: "Leapfrog4_1",
-                params: vec![a, b, c, d],
-            },
-            GraphTypeInternal::Leapfrog4_2(a, b, c, d) => GraphType {
-                variant: "Leapfrog4_2",
-                params: vec![a, b, c, d],
-            },
-            GraphTypeInternal::Leapfrog4_3(a, b, c, d) => GraphType {
-                variant: "Leapfrog4_3",
-                params: vec![a, b, c, d],
-            },
-            GraphTypeInternal::Leapfrog4_4(a, b, c, d) => GraphType {
-                variant: "Leapfrog4_4",
-                params: vec![a, b, c, d],
-            },
-            GraphTypeInternal::Leapfrog5_1(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog5_1",
-                params: vec![a, b, c, d, e],
-            },
-            GraphTypeInternal::Leapfrog5_2(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog5_2",
-                params: vec![a, b, c, d, e],
-            },
-            GraphTypeInternal::Leapfrog5_3(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog5_3",
-                params: vec![a, b, c, d, e],
-            },
-            GraphTypeInternal::Leapfrog5_4(a, b, c, d, e) => GraphType {
-                variant: "Leapfrog5_4",
-                params: vec![a, b, c, d, e],
-            },
-        }
     }
 }
 
