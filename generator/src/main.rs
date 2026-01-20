@@ -1,6 +1,5 @@
 use derive_more::Display;
 use serde::Serialize;
-use std::usize;
 use std::{iter::zip, ops::Shr};
 use tracing::{Level, debug, info, span, warn};
 use unsigned_varint::encode as varint_encode;
@@ -16,29 +15,23 @@ fn main() -> Result<()> {
     let _span = span!(Level::DEBUG, "main").entered();
     info!("Starting constant multiplication optimization");
 
-    let max_bits: usize = 17;
+    let max_bits: usize = 19;
     let max_extra_bits: usize = 2;
-    let total_bits: usize = max_bits + max_extra_bits;
-    let max_value: usize = 1 << (total_bits);
+    let table_max: usize = 1 << max_bits;
+    let max_value: usize = 1 << (max_bits + max_extra_bits);
 
     let print_structures = false;
     let print_missing = true;
 
     info!(
         max_bits,
-        max_extra_bits, total_bits, max_value, "Configuration initialized"
+        max_extra_bits, table_max, max_value, "Configuration initialized"
     );
 
-    let mut adder_count: Vec<u8> = vec![7; max_value + 1];
-    let mut adder_structures: Vec<Option<Vec<GraphType>>> = vec![None; max_value + 1];
+    let mut adder_count: Vec<u8> = vec![7; table_max + 1];
+    let mut adder_structures: Vec<Option<Vec<GraphType>>> = vec![None; table_max + 1];
     let cost0: Vec<usize> = vec![1];
-    let mut cost0_shifted: Vec<usize> = Vec::new();
-    for i in 0..total_bits {
-        cost0_shifted.push(1 << i);
-    }
-    for i in cost0_shifted.iter() {
-        adder_count[*i] = 0;
-    }
+    let cost0_shifted = create_shifted_variants(&cost0, max_value);
     adder_count[1] = 0; // Cost 0 for constant 1
     // Cost 1 combinations
     debug!("Processing cost 1 combinations");
@@ -48,7 +41,7 @@ fn main() -> Result<()> {
         &cost0,
         &cost0_shifted,
         1,
-        max_value,
+        table_max,
     );
     let cost1 = extract_cost_values(&adder_count, 1);
     debug!(cost1_count = cost1.len(), "Cost 1 values found");
@@ -60,7 +53,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost0_shifted,
         2,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -68,7 +61,7 @@ fn main() -> Result<()> {
         &cost0,
         &cost1_shifted,
         2,
-        max_value,
+        table_max,
     );
     cascade_combinations(
         &mut adder_count,
@@ -76,7 +69,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost1,
         2,
-        max_value,
+        table_max,
         true,
     );
     let cost2 = extract_cost_values(&adder_count, 2);
@@ -89,7 +82,7 @@ fn main() -> Result<()> {
         &cost2,
         &cost0_shifted,
         3,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -97,7 +90,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost1_shifted,
         3,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -105,7 +98,7 @@ fn main() -> Result<()> {
         &cost0,
         &cost2_shifted,
         3,
-        max_value,
+        table_max,
     );
     cascade_combinations(
         &mut adder_count,
@@ -113,7 +106,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost2,
         3,
-        max_value,
+        table_max,
         false,
     );
 
@@ -127,7 +120,7 @@ fn main() -> Result<()> {
         &cost3,
         &cost0_shifted,
         4,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -135,7 +128,7 @@ fn main() -> Result<()> {
         &cost2,
         &cost1_shifted,
         4,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -143,7 +136,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost2_shifted,
         4,
-        max_value,
+        table_max,
     );
     addsub_combinations(
         &mut adder_count,
@@ -151,7 +144,7 @@ fn main() -> Result<()> {
         &cost0,
         &cost3_shifted,
         4,
-        max_value,
+        table_max,
     );
     cascade_combinations(
         &mut adder_count,
@@ -159,7 +152,7 @@ fn main() -> Result<()> {
         &cost1,
         &cost3,
         4,
-        max_value,
+        table_max,
         false,
     );
     cascade_combinations(
@@ -168,7 +161,7 @@ fn main() -> Result<()> {
         &cost2,
         &cost2,
         4,
-        max_value,
+        table_max,
         true,
     );
     leapfrog4_combinations(
@@ -179,13 +172,13 @@ fn main() -> Result<()> {
         &cost0_shifted,
         &cost1_shifted,
         4,
-        max_value,
+        table_max,
     );
 
     let cost4 = extract_cost_values(&adder_count, 4);
     debug!(cost4_count = cost4.len(), "Cost 4 values found");
     let cost4_shifted = create_shifted_variants(&cost4, max_value);
-    if total_bits > 12 {
+    if max_bits > 12 {
         debug!("Processing cost 5 combinations");
         addsub_combinations(
             &mut adder_count,
@@ -193,7 +186,7 @@ fn main() -> Result<()> {
             &cost4,
             &cost0_shifted,
             5,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -201,7 +194,7 @@ fn main() -> Result<()> {
             &cost3,
             &cost1_shifted,
             5,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -209,7 +202,7 @@ fn main() -> Result<()> {
             &cost2,
             &cost2_shifted,
             5,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -217,7 +210,7 @@ fn main() -> Result<()> {
             &cost1,
             &cost3_shifted,
             5,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -225,7 +218,7 @@ fn main() -> Result<()> {
             &cost0,
             &cost4_shifted,
             5,
-            max_value,
+            table_max,
         );
         cascade_combinations(
             &mut adder_count,
@@ -233,7 +226,7 @@ fn main() -> Result<()> {
             &cost1,
             &cost4,
             5,
-            max_value,
+            table_max,
             false,
         );
         cascade_combinations(
@@ -242,7 +235,7 @@ fn main() -> Result<()> {
             &cost2,
             &cost3,
             5,
-            max_value,
+            table_max,
             false,
         );
         leapfrog5_combinations(
@@ -250,11 +243,11 @@ fn main() -> Result<()> {
             &mut adder_structures,
             &cost1_shifted,
             &cost0_shifted,
-            &cost1_shifted,
+            &cost1,
             &cost0_shifted,
             &cost1_shifted,
             5,
-            max_value,
+            table_max,
         );
 
         leapfrog4_combinations(
@@ -265,7 +258,7 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost1_shifted,
             5,
-            max_value,
+            table_max,
         );
 
         leapfrog4_combinations(
@@ -276,11 +269,12 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost2_shifted,
             5,
-            max_value,
+            table_max,
         );
     }
-    if total_bits > 19 {
+    if max_bits > 19 {
         let cost5 = extract_cost_values(&adder_count, 5);
+        debug!(cost5_count = cost5.len(), "Cost 5 values found");
         let cost5_shifted = create_shifted_variants(&cost5, max_value);
         debug!("Processing cost 6 combinations");
         addsub_combinations(
@@ -289,7 +283,7 @@ fn main() -> Result<()> {
             &cost5,
             &cost0_shifted,
             6,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -297,7 +291,7 @@ fn main() -> Result<()> {
             &cost4,
             &cost1_shifted,
             6,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -305,7 +299,7 @@ fn main() -> Result<()> {
             &cost3,
             &cost2_shifted,
             6,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -313,7 +307,7 @@ fn main() -> Result<()> {
             &cost2,
             &cost3_shifted,
             6,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -321,7 +315,7 @@ fn main() -> Result<()> {
             &cost1,
             &cost4_shifted,
             6,
-            max_value,
+            table_max,
         );
         addsub_combinations(
             &mut adder_count,
@@ -329,7 +323,7 @@ fn main() -> Result<()> {
             &cost0,
             &cost5_shifted,
             6,
-            max_value,
+            table_max,
         );
         cascade_combinations(
             &mut adder_count,
@@ -337,7 +331,7 @@ fn main() -> Result<()> {
             &cost1,
             &cost5,
             6,
-            max_value,
+            table_max,
             false,
         );
         cascade_combinations(
@@ -346,7 +340,7 @@ fn main() -> Result<()> {
             &cost2,
             &cost4,
             6,
-            max_value,
+            table_max,
             false,
         );
         cascade_combinations(
@@ -355,7 +349,7 @@ fn main() -> Result<()> {
             &cost3,
             &cost3,
             6,
-            max_value,
+            table_max,
             true,
         );
         leapfrog5_combinations(
@@ -363,11 +357,11 @@ fn main() -> Result<()> {
             &mut adder_structures,
             &cost2_shifted,
             &cost0_shifted,
-            &cost1_shifted,
+            &cost1,
             &cost0_shifted,
             &cost1_shifted,
             6,
-            max_value,
+            table_max,
         );
 
         leapfrog4_combinations(
@@ -378,7 +372,7 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost1_shifted,
             6,
-            max_value,
+            table_max,
         );
 
         leapfrog4_combinations(
@@ -389,7 +383,7 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost2_shifted,
             6,
-            max_value,
+            table_max,
         );
 
         /* leapfrog4_combinations(
@@ -400,7 +394,7 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost3_shifted,
             6,
-            max_value,
+            table_max,
         ); */
 
         leapfrog5_combinations(
@@ -408,11 +402,11 @@ fn main() -> Result<()> {
             &mut adder_structures,
             &cost1_shifted,
             &cost0_shifted,
-            &cost2_shifted,
+            &cost2,
             &cost0_shifted,
             &cost1_shifted,
             6,
-            max_value,
+            table_max,
         );
 
         /* leapfrog5_combinations(
@@ -424,7 +418,7 @@ fn main() -> Result<()> {
             &cost0_shifted,
             &cost2_shifted,
             6,
-            max_value,
+            table_max,
         ); */
     }
 
@@ -442,7 +436,7 @@ fn main() -> Result<()> {
     info!("Saving graph types");
     let mut graph_types: Vec<Vec<GraphType>> = Vec::new();
     for (i, structure) in adder_structures.iter().enumerate() {
-        if i % 2 == 1 {
+        if i % 2 == 1 && i <= table_max {
             if let Some(types) = structure {
                 graph_types.push(types.clone());
             } else {
@@ -486,7 +480,7 @@ fn main() -> Result<()> {
     }
 
     for c in adder_structures.iter().enumerate() {
-        if c.1.is_none() && c.0 % 2 == 1 && c.0 != 1 {
+        if c.1.is_none() && c.0 % 2 == 1 && c.0 != 1 && c.0 <= table_max {
             missing_count += 1;
             if print_missing {
                 println!("Missing: {}", c.0);
@@ -672,12 +666,15 @@ fn leapfrog5_combinations(
                             && leapfrog <= max_value_u128
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
-                            adder_count[leapfrog as usize] = adder_cost;
-                            add_graph_type(
-                                adder_structures,
-                                leapfrog as usize,
-                                GraphType::Leapfrog5_2(term1, term2, term3, term4, term5),
-                            );
+                            // Symmetric case with 5_3 or 5_4 when t1 and t5 are odd
+                            if !(t1 == t1_odd && t5 == t5_odd && t1 >= t5) {
+                                adder_count[leapfrog as usize] = adder_cost;
+                                add_graph_type(
+                                    adder_structures,
+                                    leapfrog as usize,
+                                    GraphType::Leapfrog5_2(term1, term2, term3, term4, term5),
+                                );
+                            }
                         }
 
                         let leapfrog = findodd_u128(t5 * ((t1 * t3).abs_diff(t2)) + t1 * t4);
@@ -710,7 +707,13 @@ fn leapfrog5_combinations(
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
                             // Symmetric case with 5_2 when t1 and t5 are odd
-                            if !(t1 == t1_odd && t5 == t5_odd && t1 >= t5) {
+                            if !(t1 == t1_odd && t5 == t5_odd && t1 >= t5)
+                                && !(term1 >= term5
+                                    && term2 == 1
+                                    && term4 == 1
+                                    && term1.is_multiple_of(2)
+                                    && term5.is_multiple_of(2))
+                            {
                                 adder_count[leapfrog as usize] = adder_cost;
                                 add_graph_type(
                                     adder_structures,
@@ -811,7 +814,12 @@ fn leapfrog4_combinations(
                     {
                         // Symmetric case (with 4_2)
                         // t5 * (t1 - t2) + t1 * t4 == t1 * (t5 + t4) - t5 * t2
-                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5)
+                            && !(term2 == 1
+                                && term4 == 1
+                                && term1.is_multiple_of(2)
+                                && term5.is_multiple_of(2))
+                        {
                             adder_count[leapfrog as usize] = adder_cost;
                             add_graph_type(
                                 adder_structures,
@@ -826,7 +834,9 @@ fn leapfrog4_combinations(
                         && leapfrog <= max_value_u128
                         && adder_count[leapfrog as usize] >= adder_cost
                     {
-                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5)
+                            && !(term1 >= term5 && term2 == 1 && term4 == 1)
+                        {
                             adder_count[leapfrog as usize] = adder_cost;
                             add_graph_type(
                                 adder_structures,

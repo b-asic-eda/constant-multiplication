@@ -12,7 +12,7 @@ const GRAPH_TYPES_FILE: &[u8] = include_bytes!("../graph_types.bin");
 // Parse the adder cost data at compile time
 const fn parse_data_header() -> usize {
     // First 8 bytes are the count
-    let count = u64::from_le_bytes([
+    u64::from_le_bytes([
         DATA_FILE[0],
         DATA_FILE[1],
         DATA_FILE[2],
@@ -21,8 +21,7 @@ const fn parse_data_header() -> usize {
         DATA_FILE[5],
         DATA_FILE[6],
         DATA_FILE[7],
-    ]) as usize;
-    count // count and offset where data starts
+    ]) as usize
 }
 
 const DATA_COUNT: usize = parse_data_header();
@@ -131,8 +130,8 @@ impl From<GraphTypeInternal> for GraphType {
 fn decode_params(remaining: &mut &[u8], count: usize) -> Result<Vec<usize>, String> {
     let mut params = Vec::with_capacity(count);
     for _ in 0..count {
-        let (param, rest) = varint_decode::usize(*remaining)
-            .map_err(|e| format!("Failed to decode usize: {}", e))?;
+        let (param, rest) =
+            varint_decode::usize(remaining).map_err(|e| format!("Failed to decode usize: {e}"))?;
         *remaining = rest;
         params.push(param);
     }
@@ -145,7 +144,7 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
 
     // Read number of entries
     let (count, rest) =
-        varint_decode::usize(remaining).map_err(|e| format!("Failed to decode count: {}", e))?;
+        varint_decode::usize(remaining).map_err(|e| format!("Failed to decode count: {e}"))?;
     remaining = rest;
 
     let mut result = Vec::with_capacity(count);
@@ -153,7 +152,7 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
     for _ in 0..count {
         // Read length of this Vec
         let (vec_len, rest) = varint_decode::usize(remaining)
-            .map_err(|e| format!("Failed to decode vec length: {}", e))?;
+            .map_err(|e| format!("Failed to decode vec length: {e}"))?;
         remaining = rest;
 
         let mut type_vec = Vec::with_capacity(vec_len);
@@ -244,7 +243,7 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                         params,
                     }
                 }
-                _ => return Err(format!("Unknown variant tag: {}", variant_tag)),
+                _ => return Err(format!("Unknown variant tag: {variant_tag}")),
             };
 
             type_vec.push(graph_type);
@@ -260,8 +259,9 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
 #[pyfunction]
 fn adder_cost(mut idx: usize) -> PyResult<u8> {
     // Right-shift even indices until odd
-    while idx % 2 == 0 && idx > 0 {
-        idx >>= 1;
+    if idx > 0 {
+        let shift = idx.trailing_zeros();
+        idx >>= shift;
     }
 
     let value_position = idx / 2;
@@ -304,8 +304,9 @@ fn info() -> String {
 #[pyfunction]
 fn get_graph_types(py: Python, mut idx: usize) -> PyResult<Py<PyAny>> {
     // Right-shift even indices until odd
-    while idx % 2 == 0 && idx > 0 {
-        idx >>= 1;
+    if idx > 0 {
+        let shift = idx.trailing_zeros();
+        idx >>= shift;
     }
 
     let all_types = get_graph_types_data()?;
@@ -346,11 +347,11 @@ fn get_all_graph_types(py: Python) -> PyResult<Py<PyAny>> {
 fn get_graph_types_data() -> PyResult<Vec<Vec<GraphType>>> {
     // Decompress the LZ4 data
     let decompressed = lz4_flex::decompress_size_prepended(GRAPH_TYPES_BYTES)
-        .map_err(|e| PyValueError::new_err(format!("Failed to decompress: {}", e)))?;
+        .map_err(|e| PyValueError::new_err(format!("Failed to decompress: {e}")))?;
 
     // Deserialize with varint decoding
     deserialize_graph_types(&decompressed)
-        .map_err(|e| PyValueError::new_err(format!("Failed to deserialize: {}", e)))
+        .map_err(|e| PyValueError::new_err(format!("Failed to deserialize: {e}")))
 }
 
 #[pymodule]
