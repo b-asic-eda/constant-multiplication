@@ -5,6 +5,8 @@ use std::{iter::zip, ops::Shr};
 use tracing::{Level, debug, info, span, warn};
 use unsigned_varint::encode as varint_encode;
 
+type AdderStructures = [Option<Vec<GraphType>>];
+
 fn main() -> Result<()> {
     // Initialize tracing subscriber
     tracing_subscriber::fmt()
@@ -48,21 +50,9 @@ fn main() -> Result<()> {
         1,
         max_value,
     );
-    let mut cost1: Vec<usize> = Vec::new();
-    for i in adder_count.iter().enumerate() {
-        if *i.1 == 1 {
-            cost1.push(i.0);
-        }
-    }
+    let cost1 = extract_cost_values(&adder_count, 1);
     debug!(cost1_count = cost1.len(), "Cost 1 values found");
-    let mut cost1_shifted: Vec<usize> = Vec::new();
-    for i in cost1.iter() {
-        let mut shift = 0;
-        while (i << shift) <= max_value {
-            cost1_shifted.push(i << shift);
-            shift += 1;
-        }
-    }
+    let cost1_shifted = create_shifted_variants(&cost1, max_value);
     debug!("Processing cost 2 combinations");
     addsub_combinations(
         &mut adder_count,
@@ -89,22 +79,9 @@ fn main() -> Result<()> {
         max_value,
         true,
     );
-    let mut cost2: Vec<usize> = Vec::new();
-    for i in adder_count.iter().enumerate() {
-        if *i.1 == 2 {
-            cost2.push(i.0);
-        }
-    }
+    let cost2 = extract_cost_values(&adder_count, 2);
     debug!(cost2_count = cost2.len(), "Cost 2 values found");
-
-    let mut cost2_shifted: Vec<usize> = Vec::new();
-    for i in cost2.iter() {
-        let mut shift = 0;
-        while (i << shift) <= max_value {
-            cost2_shifted.push(i << shift);
-            shift += 1;
-        }
-    }
+    let cost2_shifted = create_shifted_variants(&cost2, max_value);
     debug!("Processing cost 3 combinations");
     addsub_combinations(
         &mut adder_count,
@@ -140,21 +117,9 @@ fn main() -> Result<()> {
         false,
     );
 
-    let mut cost3: Vec<usize> = Vec::new();
-    for i in adder_count.iter().enumerate() {
-        if *i.1 == 3 {
-            cost3.push(i.0);
-        }
-    }
+    let cost3 = extract_cost_values(&adder_count, 3);
     debug!(cost3_count = cost3.len(), "Cost 3 values found");
-    let mut cost3_shifted: Vec<usize> = Vec::new();
-    for i in cost3.iter() {
-        let mut shift = 0;
-        while (i << shift) <= max_value {
-            cost3_shifted.push(i << shift);
-            shift += 1;
-        }
-    }
+    let cost3_shifted = create_shifted_variants(&cost3, max_value);
     debug!("Processing cost 4 combinations");
     addsub_combinations(
         &mut adder_count,
@@ -217,22 +182,9 @@ fn main() -> Result<()> {
         max_value,
     );
 
-    let mut cost4: Vec<usize> = Vec::new();
-    for i in adder_count.iter().enumerate() {
-        if *i.1 == 4 {
-            cost4.push(i.0);
-        }
-    }
+    let cost4 = extract_cost_values(&adder_count, 4);
     debug!(cost4_count = cost4.len(), "Cost 4 values found");
-
-    let mut cost4_shifted: Vec<usize> = Vec::new();
-    for i in cost4.iter() {
-        let mut shift = 0;
-        while (i << shift) <= max_value {
-            cost4_shifted.push(i << shift);
-            shift += 1;
-        }
-    }
+    let cost4_shifted = create_shifted_variants(&cost4, max_value);
     if total_bits > 12 {
         debug!("Processing cost 5 combinations");
         addsub_combinations(
@@ -328,22 +280,8 @@ fn main() -> Result<()> {
         );
     }
     if total_bits > 19 {
-        let mut cost5: Vec<usize> = Vec::new();
-        for i in adder_count.iter().enumerate() {
-            if *i.1 == 5 {
-                cost5.push(i.0);
-            }
-        }
-        debug!(cost5_count = cost5.len(), "Cost 5 values found");
-
-        let mut cost5_shifted: Vec<usize> = Vec::new();
-        for i in cost5.iter() {
-            let mut shift = 0;
-            while (i << shift) <= max_value {
-                cost5_shifted.push(i << shift);
-                shift += 1;
-            }
-        }
+        let cost5 = extract_cost_values(&adder_count, 5);
+        let cost5_shifted = create_shifted_variants(&cost5, max_value);
         debug!("Processing cost 6 combinations");
         addsub_combinations(
             &mut adder_count,
@@ -588,7 +526,7 @@ enum GraphType {
 
 fn addsub_combinations(
     adder_count: &mut [u8],
-    adder_structures: &mut [Option<Vec<GraphType>>],
+    adder_structures: &mut AdderStructures,
     terms: &[usize],
     terms_shifted: &[usize],
     adder_cost: u8,
@@ -605,7 +543,11 @@ fn addsub_combinations(
             let sum = findodd(term1 + term2);
             if sum <= max_value && adder_count[sum] >= adder_cost {
                 adder_count[sum] = adder_cost;
-                add_graph_type(adder_structures, sum, GraphType::Adder(term1, term2));
+                if term1 <= term2 {
+                    add_graph_type(adder_structures, sum, GraphType::Adder(term1, term2));
+                } else {
+                    add_graph_type(adder_structures, sum, GraphType::Adder(term2, term1));
+                }
             }
             let diff = findodd(term1.abs_diff(term2));
 
@@ -623,7 +565,7 @@ fn addsub_combinations(
 
 fn cascade_combinations(
     adder_count: &mut [u8],
-    adder_structures: &mut [Option<Vec<GraphType>>],
+    adder_structures: &mut AdderStructures,
     terms1: &[usize],
     terms2: &[usize],
     adder_cost: u8,
@@ -656,7 +598,7 @@ fn cascade_combinations(
 
 fn leapfrog5_combinations(
     adder_count: &mut [u8],
-    adder_structures: &mut [Option<Vec<GraphType>>],
+    adder_structures: &mut AdderStructures,
     terms1: &[usize],
     terms2: &[usize],
     terms3: &[usize],
@@ -678,6 +620,7 @@ fn leapfrog5_combinations(
 
     for &term1 in terms1.iter() {
         let t1 = term1 as u128;
+        let t1_odd = findodd_u128(t1);
         for &term2 in terms2.iter() {
             if term1.is_multiple_of(2) && term2.is_multiple_of(2) {
                 continue;
@@ -706,18 +649,22 @@ fn leapfrog5_combinations(
                         }
 
                         let t5 = term5 as u128;
-
+                        let t5_odd = findodd_u128(t5);
                         let leapfrog = findodd_u128(t5 * (t1 * t3 + t2) + t1 * t4);
                         if leapfrog != 0
                             && leapfrog <= max_value_u128
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
-                            adder_count[leapfrog as usize] = adder_cost;
-                            add_graph_type(
-                                adder_structures,
-                                leapfrog as usize,
-                                GraphType::Leapfrog5_1(term1, term2, term3, term4, term5),
-                            );
+                            // Symmetric case when t2 = t4
+                            // (t5 * (t1 * t3 + t2) + t1 * t4 == (t1 * (t5 * t3 + t4) + t5 * t2
+                            if t2 != t4 {
+                                adder_count[leapfrog as usize] = adder_cost;
+                                add_graph_type(
+                                    adder_structures,
+                                    leapfrog as usize,
+                                    GraphType::Leapfrog5_1(term1, term2, term3, term4, term5),
+                                );
+                            }
                         }
 
                         let leapfrog = findodd_u128((t5 * (t1 * t3 + t2)).abs_diff(t1 * t4));
@@ -738,9 +685,15 @@ fn leapfrog5_combinations(
                             && leapfrog <= max_value_u128
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
-                            // Symmetric case (with 5_2)
-                            // t5 * ((t1 * t3 - 1)) + t1 * 1 = (t1 * (t5 * t3 + 1)) - t5 * 1)
-                            if t2 != 1 || t4 != 1 {
+                            if !(t2 == 1 && t4 == 1)
+                                && !(t2 == t4 && t4 > t3 * t5 && t1 >= t5)
+                                && !(t1 == t1_odd && t5 == t5_odd && t1 >= t5)
+                            {
+                                // Symmetric case (with 5_2)
+                                // t5 * ((t1 * t3 - 1)) + t1 * 1 = (t1 * (t5 * t3 + 1)) - t5 * 1)
+                                // Symmetric case when t2 = t4 > t3 * t5
+                                // t5 * ((t2 - t1 * t3)) + t1 * t4 = t1 * (t4 - t5 * t3) - t1 * t2
+                                // Symmetric case with 5_2 when t1 and t5 are odd
                                 adder_count[leapfrog as usize] = adder_cost;
                                 add_graph_type(
                                     adder_structures,
@@ -756,12 +709,15 @@ fn leapfrog5_combinations(
                             && leapfrog <= max_value_u128
                             && adder_count[leapfrog as usize] >= adder_cost
                         {
-                            adder_count[leapfrog as usize] = adder_cost;
-                            add_graph_type(
-                                adder_structures,
-                                leapfrog as usize,
-                                GraphType::Leapfrog5_4(term1, term2, term3, term4, term5),
-                            );
+                            // Symmetric case with 5_2 when t1 and t5 are odd
+                            if !(t1 == t1_odd && t5 == t5_odd && t1 >= t5) {
+                                adder_count[leapfrog as usize] = adder_cost;
+                                add_graph_type(
+                                    adder_structures,
+                                    leapfrog as usize,
+                                    GraphType::Leapfrog5_4(term1, term2, term3, term4, term5),
+                                );
+                            }
                         }
                     }
                 }
@@ -772,7 +728,7 @@ fn leapfrog5_combinations(
 
 fn leapfrog4_combinations(
     adder_count: &mut [u8],
-    adder_structures: &mut [Option<Vec<GraphType>>],
+    adder_structures: &mut AdderStructures,
     terms1: &[usize],
     terms2: &[usize],
     terms4: &[usize],
@@ -817,7 +773,11 @@ fn leapfrog4_combinations(
                     {
                         // Symmetric case
                         // t5 * (t1 + t2) + t1 * t4 == t1 * (t5 + t4) + t5 * t2
-                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                        // Symmetric case when t2 == t4
+                        // t5 * (t1 + 1) + t1 * 1 == t1 * (t5 + 1) + t5 * 1
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5)
+                            && !(t2 == t4 && t1 >= t5)
+                        {
                             adder_count[leapfrog as usize] = adder_cost;
                             add_graph_type(
                                 adder_structures,
@@ -866,12 +826,14 @@ fn leapfrog4_combinations(
                         && leapfrog <= max_value_u128
                         && adder_count[leapfrog as usize] >= adder_cost
                     {
-                        adder_count[leapfrog as usize] = adder_cost;
-                        add_graph_type(
-                            adder_structures,
-                            leapfrog as usize,
-                            GraphType::Leapfrog4_4(term1, term2, term4, term5),
-                        );
+                        if !(t1 == findodd_u128(t1) && t5 == findodd_u128(t5) && t1 >= t5) {
+                            adder_count[leapfrog as usize] = adder_cost;
+                            add_graph_type(
+                                adder_structures,
+                                leapfrog as usize,
+                                GraphType::Leapfrog4_4(term1, term2, term4, term5),
+                            );
+                        }
                     }
                 }
             }
@@ -879,11 +841,7 @@ fn leapfrog4_combinations(
     }
 }
 
-fn add_graph_type(
-    adder_structures: &mut [Option<Vec<GraphType>>],
-    result: usize,
-    graph_type: GraphType,
-) {
+fn add_graph_type(adder_structures: &mut AdderStructures, result: usize, graph_type: GraphType) {
     if let Some(structure) = &mut adder_structures[result] {
         structure.push(graph_type);
     } else {
@@ -1089,4 +1047,27 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
     }
 
     buf
+}
+
+/// Extract all indices with a specific adder cost
+fn extract_cost_values(adder_count: &[u8], cost: u8) -> Vec<usize> {
+    adder_count
+        .iter()
+        .enumerate()
+        .filter(|(_, c)| **c == cost)
+        .map(|(idx, _)| idx)
+        .collect()
+}
+
+/// Create shifted variants of values up to max_value
+fn create_shifted_variants(values: &[usize], max_value: usize) -> Vec<usize> {
+    let mut shifted = Vec::new();
+    for &v in values {
+        let mut shift = 0;
+        while (v << shift) <= max_value {
+            shifted.push(v << shift);
+            shift += 1;
+        }
+    }
+    shifted
 }
