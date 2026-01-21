@@ -175,6 +175,62 @@ fn deserialize_graph_types(data: &[u8]) -> Result<Vec<Vec<GraphType>>, String> {
                         params,
                     }
                 }
+                11 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_1",
+                        params,
+                    }
+                }
+                12 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_2",
+                        params,
+                    }
+                }
+                13 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_3",
+                        params,
+                    }
+                }
+                14 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_4",
+                        params,
+                    }
+                }
+                15 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_5",
+                        params,
+                    }
+                }
+                16 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_6",
+                        params,
+                    }
+                }
+                17 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_7",
+                        params,
+                    }
+                }
+                18 => {
+                    let params = decode_params(&mut remaining, 7)?;
+                    GraphType {
+                        variant: "Leapfrog7_8",
+                        params,
+                    }
+                }
                 _ => return Err(format!("Unknown variant tag: {variant_tag}")),
             };
 

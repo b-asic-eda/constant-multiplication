@@ -262,9 +262,33 @@ fn main() -> Result<()> {
             &mut adder_count,
             &mut adder_structures,
             &cost1_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            5,
+            table_max,
+        );
+
+        leapfrog4_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
             &cost0_shifted,
             &cost0_shifted,
             &cost2_shifted,
+            5,
+            table_max,
+        );
+        leapfrog7_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
             5,
             table_max,
         );
@@ -383,16 +407,38 @@ fn main() -> Result<()> {
             table_max,
         );
 
-        /* leapfrog4_combinations(
+        leapfrog4_combinations(
             &mut adder_count,
             &mut adder_structures,
             &cost1_shifted,
+            &cost1_shifted,
             &cost0_shifted,
-            &cost0_shifted,
-            &cost3_shifted,
+            &cost2_shifted,
             6,
             table_max,
-        ); */
+        );
+
+        leapfrog4_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost1_shifted,
+            &cost1_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
+
+        leapfrog4_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
 
         leapfrog5_combinations(
             &mut adder_count,
@@ -417,6 +463,58 @@ fn main() -> Result<()> {
             6,
             table_max,
         ); */
+        leapfrog7_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost2_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
+        leapfrog7_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
+        leapfrog7_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
+        leapfrog7_combinations(
+            &mut adder_count,
+            &mut adder_structures,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            &cost0_shifted,
+            &cost0_shifted,
+            &cost1_shifted,
+            6,
+            table_max,
+        );
     }
 
     info!("Packing and saving data");
@@ -502,6 +600,14 @@ enum GraphType {
     Leapfrog5_2(usize, usize, usize, usize, usize),
     Leapfrog5_3(usize, usize, usize, usize, usize),
     Leapfrog5_4(usize, usize, usize, usize, usize),
+    Leapfrog7_1(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_2(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_3(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_4(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_5(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_6(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_7(usize, usize, usize, usize, usize, usize, usize),
+    Leapfrog7_8(usize, usize, usize, usize, usize, usize, usize),
 }
 
 fn addsub_combinations(
@@ -837,6 +943,220 @@ fn leapfrog4_combinations(
     }
 }
 
+fn leapfrog7_combinations(
+    adder_count: &mut [u8],
+    adder_structures: &mut AdderStructures,
+    terms1: &[usize],
+    terms2: &[usize],
+    terms3: &[usize],
+    terms4: &[usize],
+    terms5: &[usize],
+    terms6: &[usize],
+    terms7: &[usize],
+    adder_cost: u8,
+    max_value: usize,
+) {
+    debug!(
+        terms1_count = terms1.len(),
+        terms2_count = terms2.len(),
+        terms3_count = terms3.len(),
+        terms4_count = terms4.len(),
+        terms5_count = terms5.len(),
+        terms6_count = terms6.len(),
+        terms7_count = terms7.len(),
+        cost = adder_cost,
+        "leapfrog7_combinations: starting"
+    );
+    let max_value_u128 = max_value as u128;
+
+    for &term1 in terms1.iter() {
+        let t1 = term1 as u128;
+        let t1_odd = findodd_u128(t1);
+        for &term2 in terms2.iter() {
+            if term1.is_multiple_of(2) && term2.is_multiple_of(2) {
+                continue;
+            }
+            let t2 = term2 as u128;
+            for &term3 in terms3.iter() {
+                if term2.is_multiple_of(2) && term3.is_multiple_of(2) {
+                    continue;
+                }
+                let t3 = term3 as u128;
+                for &term4 in terms4.iter() {
+                    if (term2.is_multiple_of(2) || term3.is_multiple_of(2))
+                        && term4.is_multiple_of(2)
+                    {
+                        continue;
+                    }
+                    let t4 = term4 as u128;
+                    for &term5 in terms5.iter() {
+                        if term4.is_multiple_of(2) && term5.is_multiple_of(2) {
+                            continue;
+                        }
+                        let t5 = term5 as u128;
+                        let t5_odd = findodd_u128(t5);
+
+                        for &term6 in terms6.iter() {
+                            if (term4.is_multiple_of(2) || term5.is_multiple_of(2))
+                                && term6.is_multiple_of(2)
+                            {
+                                continue;
+                            }
+                            let t6 = term6 as u128;
+                            let t6_odd = findodd_u128(t6);
+
+                            for &term7 in terms7.iter() {
+                                if term6.is_multiple_of(2) && term7.is_multiple_of(2) {
+                                    continue;
+                                }
+                                let t7 = term7 as u128;
+                                let t7_odd = findodd_u128(t7);
+
+                                let leapfrog = findodd_u128(
+                                    (t7 * (t5 * (t1 * t3 + t2) + t1 * t4)) + t6 * (t1 * t3 + t2),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_1(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+
+                                let leapfrog = findodd_u128(
+                                    (t7 * (t5 * ((t1 * t3).abs_diff(t2)) + t1 * t4))
+                                        + t6 * ((t1 * t3).abs_diff(t2)),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_2(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    t7 * ((t5 * (t1 * t3 + t2)).abs_diff(t1 * t4))
+                                        + t6 * (t1 * t3 + t2),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_3(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    (t7 * (t5 * (t1 * t3 + t2) + t1 * t4))
+                                        .abs_diff(t6 * (t1 * t3 + t2)),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_4(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    t7 * ((t5 * ((t1 * t3).abs_diff(t2))).abs_diff(t1 * t4))
+                                        + t6 * ((t1 * t3).abs_diff(t2)),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_5(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    (t7 * (t5 * ((t1 * t3).abs_diff(t2)) + t1 * t4))
+                                        .abs_diff(t6 * ((t1 * t3).abs_diff(t2))),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_6(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    (t7 * ((t5 * (t1 * t3 + t2)).abs_diff(t1 * t4)))
+                                        .abs_diff(t6 * (t1 * t3 + t2)),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_7(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                                let leapfrog = findodd_u128(
+                                    (t7 * (t5 * ((t1 * t3).abs_diff(t2))).abs_diff(t1 * t4))
+                                        .abs_diff(t6 * ((t1 * t3).abs_diff(t2))),
+                                );
+                                if leapfrog != 0
+                                    && leapfrog <= max_value_u128
+                                    && adder_count[leapfrog as usize] >= adder_cost
+                                {
+                                    adder_count[leapfrog as usize] = adder_cost;
+                                    add_graph_type(
+                                        adder_structures,
+                                        leapfrog as usize,
+                                        GraphType::Leapfrog7_8(
+                                            term1, term2, term3, term4, term5, term6, term7,
+                                        ),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn add_graph_type(adder_structures: &mut AdderStructures, result: usize, graph_type: GraphType) {
     if let Some(structure) = &mut adder_structures[result] {
         structure.push(graph_type);
@@ -1037,6 +1357,142 @@ fn serialize_graph_types(types: &[Vec<GraphType>]) -> Vec<u8> {
                     buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
                     let mut e_buf = varint_encode::usize_buffer();
                     buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                }
+                GraphType::Leapfrog7_1(a, b, c, d, e, f, g) => {
+                    buf.push(11);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_2(a, b, c, d, e, f, g) => {
+                    buf.push(12);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_3(a, b, c, d, e, f, g) => {
+                    buf.push(13);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_4(a, b, c, d, e, f, g) => {
+                    buf.push(14);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_5(a, b, c, d, e, f, g) => {
+                    buf.push(15);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_6(a, b, c, d, e, f, g) => {
+                    buf.push(16);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_7(a, b, c, d, e, f, g) => {
+                    buf.push(10);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
+                }
+                GraphType::Leapfrog7_8(a, b, c, d, e, f, g) => {
+                    buf.push(10);
+                    let mut a_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*a, &mut a_buf));
+                    let mut b_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*b, &mut b_buf));
+                    let mut c_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*c, &mut c_buf));
+                    let mut d_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*d, &mut d_buf));
+                    let mut e_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*e, &mut e_buf));
+                    let mut f_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*f, &mut f_buf));
+                    let mut g_buf = varint_encode::usize_buffer();
+                    buf.extend_from_slice(varint_encode::usize(*g, &mut g_buf));
                 }
             }
         }
